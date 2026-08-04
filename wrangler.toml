@@ -1,0 +1,27 @@
+name = "d-pub"
+main = "server.js"
+compatibility_date = "2026-06-28"
+workers_dev = true
+
+routes = [
+  { pattern = "d-pub.k7m.f5.si", custom_domain = true },
+  { pattern = "d.k7m.f5.si", custom_domain = true }
+]
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+run_worker_first = true
+
+[[kv_namespaces]]
+binding = "TEMP_KV"
+id = "4003c749c4cd45539759c8c0a1b3c1fa"
+
+# ─── 実験用環境 ───────────────────────────────────────────
+[env.experiment]
+name = "d-pub-experiment"
+routes = []  # カスタムドメインを継承しない（workers.dev サブドメインのみ使用）
+
+[[env.experiment.kv_namespaces]]
+binding = "TEMP_KV"
+id = "247e00b01c0f4c1abe88e3714d090265"
