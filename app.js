@@ -242,6 +242,17 @@ function getApiUrl(path) {
   return `${endpoint}${relativePath}`;
 }
 
+function getPublicUrl(workerUrl) {
+  const directBase = getR2BaseUrl();
+  if (!directBase) return workerUrl;
+
+  try {
+    return `${directBase}${new URL(workerUrl).pathname}`;
+  } catch {
+    return workerUrl;
+  }
+}
+
 function getRequestHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
   const token = (localStorage.getItem("cfToken") || "").trim();
@@ -378,26 +389,11 @@ apiToken?.addEventListener("input", () => {
   localStorage.setItem("apiToken", apiToken.value.trim());
 });
 
-async function saveSharedConfig() {
-  const limit = storageLimitRange?.value || "10000";
-  const cleanEnabled = autoCleanEnabled?.checked || false;
-  const cleanDays = autoCleanDays?.value || "7";
-  try {
-    const response = await fetch(getApiUrl("/api/config"), {
-      method: "POST",
-      headers: getRequestHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({
-        storageLimit: Number(limit),
-        autoCleanEnabled: cleanEnabled,
-        autoCleanDays: Number(cleanDays),
-      }),
-    });
-    if (!response.ok) {
-      console.error("Failed to save shared config");
-    }
-  } catch (error) {
-    console.error("Failed to save shared config:", error);
-  }
+function saveSharedConfig() {
+  // BYOC Workerにはアプリ設定を保持させず、利用中のブラウザだけに保存する。
+  localStorage.setItem("storageLimit", storageLimitRange?.value || "10000");
+  localStorage.setItem("autoCleanEnabled", String(autoCleanEnabled?.checked || false));
+  localStorage.setItem("autoCleanDays", autoCleanDays?.value || "7");
 }
 
 storageLimitRange?.addEventListener("input", () => {
@@ -1053,7 +1049,7 @@ deleteSelectedR2FilesButton.addEventListener("click", async () => {
   try {
     const deletePromises = Array.from(checkedBoxes).map(async (checkbox) => {
       const key = checkbox.dataset.key;
-      const response = await fetch(`${window.location.origin}/api/temp-delete`, {
+      const response = await fetch(getApiUrl("/api/temp-delete"), {
         method: "POST",
         headers: getRequestHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ key }),
@@ -1182,9 +1178,9 @@ r2FileList.addEventListener("click", async (event) => {
     try {
       event.target.disabled = true;
       event.target.textContent = "延長中...";
-      const res = await fetch(`${window.location.origin}/api/temp-extend`, {
+      const res = await fetch(getApiUrl("/api/temp-extend"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getRequestHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ key }),
       });
       if (res.ok) {
@@ -1210,9 +1206,9 @@ r2FileList.addEventListener("click", async (event) => {
     try {
       event.target.disabled = true;
       event.target.textContent = "消滅中...";
-      const res = await fetch(`${window.location.origin}/api/temp-delete`, {
+      const res = await fetch(getApiUrl("/api/temp-delete"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getRequestHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ key }),
       });
       if (res.ok) {
@@ -1234,10 +1230,10 @@ r2FileList.addEventListener("click", async (event) => {
     if (!confirm(`R2から「${filename}」を完全に削除しますか？`)) return;
     
     try {
-      const response = await fetch(getApiUrl("/api/delete"), {
+      const response = await fetch(getApiUrl("/api/temp-delete"), {
         method: "POST",
         headers: getRequestHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ filename }),
+        body: JSON.stringify({ key: filename }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "サーバーエラー" }));
@@ -1512,7 +1508,7 @@ async function uploadImage(result) {
 
   try {
     const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
-    const uploadUrl = `${window.location.origin}/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}`;
+    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}`);
 
     const response = await fetch(uploadUrl, {
       method: "POST",
@@ -1529,11 +1525,12 @@ async function uploadImage(result) {
 
     const data = await response.json();
     result.isUploaded = true;
-    result.proxyUrl = data.url;
-    result.catboxFilename = data.url;
+    result.proxyUrl = getPublicUrl(data.url);
+    result.storageKey = decodeURIComponent(new URL(data.url).pathname.slice(1));
+    result.catboxFilename = result.proxyUrl;
 
     // テキスト作成支援パレットに挿入
-    paletteFiles.unshift({ key: result.name, url: data.url });
+    paletteFiles.unshift({ key: result.storageKey, url: result.proxyUrl });
     renderUrlPalette();
 
   } catch (error) {
@@ -1553,7 +1550,7 @@ async function uploadFile(file, customFilename = null) {
   const newFilename = customFilename || file.name;
 
   const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
-  const uploadUrl = `${window.location.origin}/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`;
+  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`);
 
   const response = await fetch(uploadUrl, {
     method: "POST",
@@ -1569,7 +1566,7 @@ async function uploadFile(file, customFilename = null) {
   }
 
   const data = await response.json();
-  paletteFiles.unshift({ key: newFilename, url: data.url });
+  paletteFiles.unshift({ key: decodeURIComponent(new URL(data.url).pathname.slice(1)), url: getPublicUrl(data.url) });
   renderUrlPalette();
 
   return data;
@@ -1579,10 +1576,10 @@ async function deleteImage(result) {
   if (!confirm(`「${result.name}」をサーバーから削除しますか？`)) return;
 
   try {
-    const response = await fetch(getApiUrl("/api/delete"), {
+    const response = await fetch(getApiUrl("/api/temp-delete"), {
       method: "POST",
       headers: getRequestHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ filename: result.catboxFilename }),
+      body: JSON.stringify({ key: result.storageKey }),
     });
 
     if (!response.ok) {
@@ -1704,31 +1701,34 @@ async function fetchAndRenderR2Files() {
   if (!r2FileList) return;
   r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">読み込み中...</span>`;
   try {
-    const response = await fetch(`${window.location.origin}/api/temp-files`);
+    const response = await fetch(getApiUrl("/api/temp-files"), {
+      headers: getRequestHeaders(),
+    });
     if (!response.ok) {
       throw new Error("一時共有ファイル一覧の取得に失敗しました。");
     }
     const { files } = await response.json();
 
     // 5ch投稿用パレットの更新
-    paletteFiles = files ? files.map(f => ({ key: f.filename, url: f.url })) : [];
+    const publicFiles = files ? files.map(f => ({ ...f, url: getPublicUrl(f.url) })) : [];
+    paletteFiles = publicFiles.map(f => ({ key: f.key, url: f.url }));
     renderUrlPalette();
 
     // 全体の合計容量の進捗メーター更新
-    const totalSize = files ? files.reduce((sum, f) => sum + (f.size || 0), 0) : 0;
+    const totalSize = publicFiles.reduce((sum, f) => sum + (f.size || 0), 0);
     state.r2TotalSize = totalSize;
     updateStorageUsageUI();
 
     r2FileList.innerHTML = "";
-    if (!files || !files.length) {
+    if (!publicFiles.length) {
       r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px;">現在KVに保存中の一時ファイルはありません。</span>`;
       return;
     }
 
     // 残り時間が長い順
-    files.sort((a, b) => b.remaining - a.remaining);
+    publicFiles.sort((a, b) => b.remaining - a.remaining);
 
-    files.forEach(file => {
+    publicFiles.forEach(file => {
       const item = document.createElement("article");
       item.className = "result-item";
 
