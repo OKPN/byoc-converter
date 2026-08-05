@@ -1231,9 +1231,11 @@ async function fetchAndRenderR2Files() {
       r2FileList.append(item);
     });
 
+    updateSelectedR2ActionButtonsState();
   } catch (error) {
     console.error("Fetch temp files UI error:", error);
     r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">一覧の取得に失敗しました: ${escapeHtml(error.message)}</span>`;
+    updateSelectedR2ActionButtonsState();
   }
 }
 
@@ -1458,8 +1460,8 @@ deleteSelectedR2FilesButton?.addEventListener("click", async () => {
     alert(`削除中にエラーが発生しました: ${error.message}`);
   } finally {
     deleteSelectedR2FilesButton.disabled = false;
-    deleteSelectedR2FilesButton.style.display = "none";
     await fetchAndRenderR2Files();
+    updateSelectedR2ActionButtonsState();
   }
 });
 
