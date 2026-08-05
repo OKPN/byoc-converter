@@ -1,4 +1,4 @@
-"use strict";
+import QRCode from "qrcode";
 
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
@@ -24,10 +24,16 @@ const statusText = document.querySelector("#statusText");
 const cfEndpoint = document.querySelector("#cfEndpoint");
 const cfToken = document.querySelector("#cfToken");
 const cfDirectDomain = document.querySelector("#cfDirectDomain");
-const cfSaveButton = document.querySelector("#cfSaveButton");
-const cfClearButton = document.querySelector("#cfClearButton");
 const cfStatus = document.querySelector("#cfStatus");
 const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
+const cfSaveButton = document.querySelector("#cfSaveButton");
+const cfClearButton = document.querySelector("#cfClearButton");
+const cfShareQrButton = document.querySelector("#cfShareQrButton");
+
+// QRコードモーダル要素
+const qrModal = document.querySelector("#qrModal");
+const qrCanvas = document.querySelector("#qrCanvas");
+const closeQrModalButton = document.querySelector("#closeQrModalButton");
 
 // アクションボタン
 const convertButton = document.querySelector("#convertButton");
@@ -217,7 +223,36 @@ function loadTemplates(selectedValue = "") {
   }
 }
 
-// 起動時の初期ロード
+function checkAndApplyHashSync() {
+  try {
+    const hash = window.location.hash || "";
+    if (hash.startsWith("#sync=")) {
+      const encoded = hash.substring(6);
+      if (encoded) {
+        const jsonStr = decodeURIComponent(atob(encoded));
+        const payload = JSON.parse(jsonStr);
+
+        if (payload && payload.e && payload.t) {
+          localStorage.setItem("cfEndpoint", payload.e);
+          localStorage.setItem("cfToken", payload.t);
+          if (payload.d) {
+            localStorage.setItem("cfDirectDomain", payload.d);
+          } else {
+            localStorage.removeItem("cfDirectDomain");
+          }
+
+          // 即座に URL から #sync=... を消去して痕跡を消す！
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to parse sync hash:", err);
+  }
+}
+
+// 起動時の初期ロード & ハッシュ同期チェック
+checkAndApplyHashSync();
 loadSettings();
 if (localStorage.getItem("cfEndpoint") && localStorage.getItem("cfToken")) {
   fetchAndRenderR2Files();
@@ -284,6 +319,54 @@ cfClearButton?.addEventListener("click", () => {
   render();
   fetchAndRenderR2Files(); // クリア時も表示を更新
   if (cfSettingsAccordion) cfSettingsAccordion.open = true;
+});
+
+// --- 📱 可視光スキャン（QRコード）同期ハンドラ ---
+cfShareQrButton?.addEventListener("click", async () => {
+  const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim();
+  const token    = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  const direct   = (localStorage.getItem("cfDirectDomain") || cfDirectDomain?.value || "").trim();
+
+  if (!endpoint || !token) {
+    alert("⚠️ Worker URL と API トークンを保存してから画面共有を押してください。");
+    return;
+  }
+
+  try {
+    const payload = { e: endpoint, t: token };
+    if (direct) payload.d = direct;
+
+    const jsonStr = JSON.stringify(payload);
+    const encoded = btoa(encodeURIComponent(jsonStr));
+
+    const syncUrl = `${window.location.origin}${window.location.pathname}#sync=${encoded}`;
+
+    if (qrCanvas) {
+      await QRCode.toCanvas(qrCanvas, syncUrl, {
+        width: 220,
+        margin: 1,
+        color: {
+          dark: "#0f172a",
+          light: "#ffffff",
+        },
+      });
+    }
+
+    if (qrModal) qrModal.style.display = "grid";
+  } catch (err) {
+    console.error("QR Code generation error:", err);
+    alert("QRコードの生成に失敗しました。");
+  }
+});
+
+closeQrModalButton?.addEventListener("click", () => {
+  if (qrModal) qrModal.style.display = "none";
+});
+
+qrModal?.addEventListener("click", (e) => {
+  if (e.target === qrModal) {
+    qrModal.style.display = "none";
+  }
 });
 
 // --- UIイベントリスナー ---

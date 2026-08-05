@@ -113,8 +113,9 @@
                   <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
                   <span style="font-size: 11px; color: var(--muted); margin-top: 3px;">未入力の場合は Worker URL をそのまま使用</span>
                 </label>
-                <div style="display: flex; gap: 8px; margin-top: 4px;">
-                  <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1;">保存する</button>
+                <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                  <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;">保存する</button>
+                  <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有">📱 スマホへ共有</button>
                   <button class="ghost-button danger-button" id="cfClearButton" type="button">クリア</button>
                 </div>
                 <div id="cfStatus" style="font-size: 12px; min-height: 16px;"></div>
@@ -230,6 +231,22 @@
         </footer>
       </section>
     </main>
+
+    <!-- QRコード同期モーダル -->
+    <div id="qrModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content" style="max-width: 360px; text-align: center; padding: 24px;">
+        <h3 style="margin-top: 0; font-size: 16px; color: var(--text);">📱 スマホ/別端末でスキャン</h3>
+        <p style="font-size: 12px; color: var(--text-muted, #9ea3b0); margin-bottom: 16px; line-height: 1.5;">
+          スマホのカメラで下記QRコードを読み取ると、接続情報（Worker URL / トークン / カスタムドメイン）が安全に直接同期されます。
+        </p>
+        <div id="qrContainer" style="background: #ffffff; padding: 16px; border-radius: 12px; display: inline-block; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+          <canvas id="qrCanvas" style="display: block; margin: 0 auto;"></canvas>
+        </div>
+        <div>
+          <button class="ghost-button" id="closeQrModalButton" type="button" style="width: 100%;">閉じる</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="./app.js"></script>
   </body>
