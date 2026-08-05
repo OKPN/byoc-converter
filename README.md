@@ -1,28 +1,63 @@
-# BYOC Converter
+# 🖼️ BYOC Converter
 
-A privacy-focused, browser-based local image conversion studio with optional Cloudflare KV temporary backup storage.
+A privacy-first, browser-local image optimization, Exif stripping, and format conversion studio with an optional self-hosted Cloudflare Workers/KV temporary cloud sharing integration.
 
----
-
-## ⚡ Features
-
-- **100% Client-Side Local Processing**: Convert images to WebP, JPEG, or JXL right inside your browser without uploading raw files to external servers.
-- **Privacy First (Exif Stripping)**: Automatically strip sensitive GPS and Exif metadata on conversion.
-- **Optional Cloudflare KV Backup**: Safely upload converted or raw files to your personal Cloudflare Worker/KV with auto-expiring TTLs (24 hours to 7 days).
-- **Text Composer & Link Palette**: Integrated 5ch/forum text helper with 1-click thumbnail/link insertion.
-- **Robust Clipboard Support**: Reliable copy buttons with multi-tier fallback mechanism.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-orange?style=for-the-badge&logo=github)](https://okpn.github.io/byoc-converter/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 ---
 
-## 🛠️ Usage
+## ✨ Features
 
-1. Open **[BYOC Converter](https://okpn.github.io/byoc-converter/)** in any modern web browser.
-2. Drag & drop images or folders.
-3. Configure format (WebP/JPEG/JXL), quality, and rename rules.
-4. Convert locally, or optionally input your Cloudflare Worker URL + Token in **☁️ Cloudflare Settings** for temporary sharing.
+- **🔐 100% Local Browser Processing**: Image optimization and Exif metadata stripping happen entirely inside your browser (Canvas / WebAssembly). Your files are **never uploaded** to any third-party servers during conversion.
+- **⚡ Fast & Versatile Format Conversion**: Convert images to **WebP**, **JPEG**, or **JXL** with real-time quality tuning and batch renaming rules (`{name}`, `{num:2}`, `{randam:6}`).
+- **🎬 Video Thumbnail Generation**: Automatically generates static frame previews for video files (`.mp4`, `.webm`, `.mov`, `.m4v`).
+- **📦 ZIP Batch Download**: Package all processed images into a single ZIP file with a single click.
+- **🌐 Full i18n Support (JA / EN)**: Dynamic Japanese and English UI switching with automatic browser language detection and `localStorage` memory.
+- **📱 Optical QR Code Sync (`#sync=...`)**: Seamlessly transfer API credentials between devices via encrypted URL hash QR codes that automatically purge themselves from browser history upon scanning.
+
+---
+
+## 💡 Optional Feature: Self-Hosted Cloud Sharing (BYOK Architecture)
+
+While BYOC Converter is primarily a local image optimization tool, it includes an optional **Bring Your Own Key (BYOK)** feature:
+
+- **Self-Hosted Storage**: Connect your own [Cloudflare Worker](https://github.com/OKPN/byoc-worker) & KV storage to turn the converter into a private, ephemeral file uploader with auto-expiring links (1 to 7 days).
+- **Zero Maintainer Cost**: Leverages Cloudflare's generous free tier (100,000 requests/day per account).
+- **Complete Privacy & Legal Discretion**: Your data remains exclusively in your own Cloudflare account.
+
+---
+
+## 🚀 Quick Start
+
+No installation required! Access the web application directly in any modern browser:
+
+👉 **[https://okpn.github.io/byoc-converter/](https://okpn.github.io/byoc-converter/)**
+
+### Local Development
+
+```bash
+# 1. Clone repository
+git clone https://github.com/OKPN/byoc-converter.git
+cd byoc-converter
+
+# 2. Install dependencies
+npm install
+
+# 3. Start local development server
+npm run dev
+```
+
+---
+
+## ⚙️ Backend Setup (Optional)
+
+To enable temporary cloud uploads, deploy your own instance of the backend worker:
+
+👉 **[BYOC Worker GitHub Repository](https://github.com/OKPN/byoc-worker)**
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
