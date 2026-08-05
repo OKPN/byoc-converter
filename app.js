@@ -3,6 +3,132 @@ import QRCode from "qrcode";
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
 
+// --- 多言語 (i18n) 辞書 ---
+const i18nDict = {
+  ja: {
+    siteTitle: "BYOC Converter",
+    eyebrow: "ブラウザ内のみで画像をセキュアに変換処理!",
+    whatIsSiteSummary: "❓ どのようなサイト？",
+    whatIsSiteBody: "外部サーバを一切介さず、お使いのブラウザ内だけで画像をセキュアに変換・軽量化・Exif削除できるローカル専用ツールです。<br><span style=\"display: inline-block; margin-top: 6px; font-size: 12px; color: #a5b4fc;\">※（おまけ機能）ご自身のCloudflare情報を入力することで（これもブラウザ内のみにセキュア保存）、ファイルのアップロード・共有も可能です。</span>",
+    inputFiles: "入力ファイル",
+    addFolder: "フォルダを追加",
+    dropText: "画像やフォルダをここにドロップ",
+    orClick: "またはクリックしてファイルを選択",
+    settings: "設定",
+    outputFormat: "出力形式",
+    quality: "品質",
+    renameRule: "リネーム規則",
+    originalName: "元ファイル名",
+    seq01: "連番 (01)",
+    seq001: "連番 (001)",
+    random6: "ランダム (6文字)",
+    retentionPeriod: "保存期間 (自動消滅タイマー)",
+    ttl1d: "1日間 (24時間後消滅)",
+    ttl3d: "3日間 (72時間後消滅)",
+    ttl7d: "7日間 (168時間後消滅)",
+    cfTitle: "☁️ Cloudflare 情報",
+    cfEndpointLabel: "Worker エンドポイント URL",
+    cfEndpointSub: "自分の Cloudflare Worker の URL",
+    cfTokenLabel: "API トークン",
+    cfTokenSub: "Worker の認証トークン（不正利用防止）",
+    cfDomainLabel: "直リンク配信ドメイン",
+    cfDomainSub: "未入力の場合は Worker URL をそのまま使用",
+    btnSave: "保存する",
+    btnShareQr: "📱 スマホへ共有",
+    btnClear: "クリア",
+    kvLimitNotice: "Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style=\"color: #fff;\">最大25MBまで</strong>となります。<br><span style=\"opacity: 0.9;\">画像を変換した場合、メタデータの保持に関しては保証できません。</span>",
+    btnConvertUpload: "変換してアップロード",
+    btnUploadRename: "リネームだけしてアップロード",
+    btnUploadOriginal: "そのままアップロード",
+    btnConvertOnly: "変換だけする",
+    btnConvertDownload: "変換してダウンロード",
+    outputFiles: "出力ファイル",
+    statusWaiting: "待機中",
+    btnZipDownload: "ZIPで一括ダウンロード",
+    btnUploadAll: "すべてアップロード",
+    textComposerHeading: "💬 テキスト作成支援",
+    r2Heading: "⚡ 一時共有（KVキャッシュ）内のファイル",
+    usagePrefix: "使用量",
+    limitPrefix: "上限",
+    btnReload: "更新",
+    btnBatchExtend: "選択を一括+24h延長",
+    btnBatchDelete: "選択削除",
+    copyUrl: "URLコピー",
+    extend24h: "+24h 延長",
+    deleteNow: "今すぐ消滅",
+    copied: "コピー完了!",
+    failed: "失敗",
+    extended: "延長中...",
+    deleting: "消滅中...",
+    btnPromptCopy: "文章をコピーする",
+    promptSelect: "-- 定型文を選択 --",
+    promptNew: "🆕 新しい定型文を追加...",
+    promptSave: "定型文を保存",
+    promptDelete: "削除",
+  },
+  en: {
+    siteTitle: "BYOC Converter",
+    eyebrow: "Secure client-side image processing right inside your browser!",
+    whatIsSiteSummary: "❓ What is this site?",
+    whatIsSiteBody: "A privacy-first local tool to convert, compress, and strip Exif metadata directly inside your browser with zero server uploads.<br><span style=\"display: inline-block; margin-top: 6px; font-size: 12px; color: #a5b4fc;\">*(Optional) Input your personal Cloudflare credentials (stored safely in local browser storage) to upload & share files.</span>",
+    inputFiles: "Input Files",
+    addFolder: "Add Folder",
+    dropText: "Drop images or folders here",
+    orClick: "or click to select files",
+    settings: "Settings",
+    outputFormat: "Output Format",
+    quality: "Quality",
+    renameRule: "Rename Rule",
+    originalName: "Original Name",
+    seq01: "Seq (01)",
+    seq001: "Seq (001)",
+    random6: "Random (6 chars)",
+    retentionPeriod: "Retention Period (Auto-Expiration)",
+    ttl1d: "1 Day (expires in 24h)",
+    ttl3d: "3 Days (expires in 72h)",
+    ttl7d: "7 Days (expires in 168h)",
+    cfTitle: "☁️ Cloudflare Credentials",
+    cfEndpointLabel: "Worker Endpoint URL",
+    cfEndpointSub: "URL of your Cloudflare Worker",
+    cfTokenLabel: "API Token",
+    cfTokenSub: "Worker authentication bearer token",
+    cfDomainLabel: "Custom Direct Domain",
+    cfDomainSub: "Uses Worker URL if left empty",
+    btnSave: "Save Settings",
+    btnShareQr: "📱 Share to Phone",
+    btnClear: "Clear",
+    kvLimitNotice: "Due to Cloudflare KV specs, max file size is <strong style=\"color: #fff;\">25MB per file</strong>.<br><span style=\"opacity: 0.9;\">Metadata retention is not guaranteed when converted.</span>",
+    btnConvertUpload: "Convert & Upload",
+    btnUploadRename: "Rename & Upload Only",
+    btnUploadOriginal: "Upload As-Is",
+    btnConvertOnly: "Convert Only",
+    btnConvertDownload: "Convert & Download",
+    outputFiles: "Output Files",
+    statusWaiting: "Idle",
+    btnZipDownload: "Batch ZIP Download",
+    btnUploadAll: "Upload All",
+    textComposerHeading: "💬 Text Composer Helper",
+    r2Heading: "⚡ Temporary Files (KV Cache)",
+    usagePrefix: "Storage Used",
+    limitPrefix: "Limit",
+    btnReload: "Refresh",
+    btnBatchExtend: "Batch Extend +24h",
+    btnBatchDelete: "Batch Delete",
+    copyUrl: "Copy URL",
+    extend24h: "+24h Extend",
+    deleteNow: "Delete Now",
+    copied: "Copied!",
+    failed: "Failed",
+    extended: "Extending...",
+    deleting: "Deleting...",
+    btnPromptCopy: "Copy Text",
+    promptSelect: "-- Select Template --",
+    promptNew: "🆕 Add New Template...",
+    promptSave: "Save Template",
+    promptDelete: "Delete",
+  }
+};
+
 // --- アプリケーション状態 ---
 const state = {
   files: [],
@@ -34,6 +160,42 @@ const cfShareQrButton = document.querySelector("#cfShareQrButton");
 const qrModal = document.querySelector("#qrModal");
 const qrCanvas = document.querySelector("#qrCanvas");
 const closeQrModalButton = document.querySelector("#closeQrModalButton");
+
+// 言語切替セレクト
+const langSelect = document.querySelector("#langSelect");
+
+function getAppLanguage() {
+  const saved = localStorage.getItem("appLang");
+  if (saved && (saved === "ja" || saved === "en")) return saved;
+  return navigator.language.startsWith("ja") ? "ja" : "en";
+}
+
+function setAppLanguage(lang) {
+  localStorage.setItem("appLang", lang);
+  if (langSelect) langSelect.value = lang;
+  updateUiTranslations(lang);
+}
+
+function updateUiTranslations(lang) {
+  const dict = i18nDict[lang] || i18nDict.ja;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.dataset.i18n;
+    if (dict[key]) {
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        el.placeholder = dict[key];
+      } else if (el.dataset.i18nHtml === "true") {
+        el.innerHTML = dict[key];
+      } else {
+        el.textContent = dict[key];
+      }
+    }
+  });
+  render();
+}
+
+langSelect?.addEventListener("change", (e) => {
+  setAppLanguage(e.target.value);
+});
 
 // アクションボタン
 const convertButton = document.querySelector("#convertButton");
@@ -252,9 +414,10 @@ function checkAndApplyHashSync() {
   }
 }
 
-// 起動時の初期ロード & ハッシュ同期チェック
+// 起動時の初期ロード & ハッシュ同期チェック & 多言語適用
 checkAndApplyHashSync();
 loadSettings();
+setAppLanguage(getAppLanguage());
 if (localStorage.getItem("cfEndpoint") && localStorage.getItem("cfToken")) {
   fetchAndRenderR2Files();
 }
