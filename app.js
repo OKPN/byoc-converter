@@ -107,6 +107,10 @@ const i18nDict = {
     btnConvertUpload: "Convert & Upload",
     btnUploadRename: "Rename & Upload Only",
     btnUploadOriginal: "Upload As-Is",
+    nonConverted: "Unconverted",
+    rateReduced: "{rate}% reduced",
+    rateIncreased: "{rate}% increased",
+    rateUnchanged: "0% unchanged",
     btnConvertOnly: "Convert Only",
     btnConvertDownload: "Convert & Download",
     outputFiles: "Output Files",
@@ -827,6 +831,8 @@ fileList?.addEventListener("click", (event) => {
 
 function renderResults() {
   if (!resultList) return;
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
   resultList.innerHTML = "";
   if (!state.results.length) {
     const empty = document.createElement("div");
@@ -863,9 +869,20 @@ function renderResults() {
 
     let metaHtml = "";
     if (result.isNonImage) {
-      metaHtml = `${formatBytes(result.size)} · 無変換`;
+      metaHtml = `${formatBytes(result.size)} · ${escapeHtml(dict.nonConverted)}`;
     } else {
-      metaHtml = `${formatBytes(result.originalSize)} -> ${formatBytes(result.size)} · ${savedRate}% 削減`;
+      let rateText = "";
+      if (savedRate > 0) {
+        const template = dict.rateReduced || "{rate}% 削減";
+        rateText = `<span style="color: #4caf50; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(savedRate)))}</span>`;
+      } else if (savedRate < 0) {
+        const absRate = Math.abs(savedRate);
+        const template = dict.rateIncreased || "{rate}% 増加";
+        rateText = `<span style="color: #ff5252; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(absRate)))}</span>`;
+      } else {
+        rateText = `<span style="color: var(--muted);">${escapeHtml(dict.rateUnchanged || "0% 変化なし")}</span>`;
+      }
+      metaHtml = `${formatBytes(result.originalSize)} -> ${formatBytes(result.size)} · ${rateText}`;
     }
 
     let warnNotice = "";
