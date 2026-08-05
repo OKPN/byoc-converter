@@ -88,51 +88,6 @@
               </div>
             </label>
 
-            <label class="field" style="margin-top: 14px;">
-              <span data-i18n="retentionPeriod">保存期間 (自動消滅タイマー)</span>
-              <select id="tempTtlSelect" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 8px; font-size: 14px; outline: none;">
-                <option value="86400" data-i18n="ttl1d">1日間 (24時間後消滅)</option>
-                <option value="259200" selected data-i18n="ttl3d">3日間 (72時間後消滅)</option>
-                <option value="604800" data-i18n="ttl7d">7日間 (168時間後消滅)</option>
-              </select>
-            </label>
-
-            <!-- 安全な Cloudflare 接続情報アコーディオン（前と同じ位置） -->
-            <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion" style="margin-top: 16px;">
-              <summary data-i18n="cfTitle">☁️ Cloudflare 情報</summary>
-              <div class="settings-content" style="padding: 14px 0 4px; display: flex; flex-direction: column; gap: 10px;">
-                <label class="field">
-                  <span><span data-i18n="cfEndpointLabel">Worker エンドポイント URL</span> <span style="color: var(--danger);">*</span></span>
-                  <input id="cfEndpoint" type="url" placeholder="https://my-worker.my-name.workers.dev" spellcheck="false" autocomplete="off">
-                  <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfEndpointSub">自分の Cloudflare Worker の URL</span>
-                </label>
-                <label class="field">
-                  <span><span data-i18n="cfTokenLabel">API トークン</span> <span style="color: var(--danger);">*</span></span>
-                  <input id="cfToken" type="password" placeholder="your-secret-token" spellcheck="false" autocomplete="off">
-                  <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
-                </label>
-                <label class="field">
-                  <span><span data-i18n="cfDomainLabel">直リンク配信ドメイン</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                  <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
-                  <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
-                </label>
-                <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                  <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;" data-i18n="btnSave">保存する</button>
-                  <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホへ共有</button>
-                  <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" class="ghost-button" id="cfDashboardLink" style="display: inline-flex; align-items: center; font-size: 12px; text-decoration: none;">Cloudflare ↗</a>
-                  <button class="ghost-button danger-button" id="cfClearButton" type="button" data-i18n="btnClear">クリア</button>
-                </div>
-                <div id="cfStatus" style="font-size: 12px; min-height: 16px;"></div>
-              </div>
-            </details>
-
-            <div class="metadata-warning" style="margin-top: 12px; border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
-              <span class="warning-icon" style="color: #818cf8;">ℹ️</span>
-              <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #c7d2fe; font-size: 11px; line-height: 1.5; margin: 0;">
-                Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style="color: #fff;">最大25MBまで</strong>となります。画像を変換した場合、メタデータの保持に関しては保証できません。
-              </p>
-            </div>
-
             <div class="action-buttons-group" style="margin-top: 20px;">
               <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">変換してダウンロード</button>
               <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">変換だけする</button>
@@ -140,6 +95,54 @@
                 <button class="ghost-button" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload">変換してアップロード</button>
                 <button class="ghost-button" id="uploadRenameButton" type="button" disabled data-i18n="btnUploadRename">リネームだけしてアップロード</button>
                 <button class="ghost-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal">そのままアップロード</button>
+              </div>
+            </div>
+
+            <!-- アップロードボタン群の下に配置した「おまけ設定」領域 -->
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 12px;">
+              <label class="field" style="padding: 0;">
+                <span data-i18n="retentionPeriod">保存期間 (自動消滅タイマー)</span>
+                <select id="tempTtlSelect" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 8px; font-size: 14px; outline: none;">
+                  <option value="86400" data-i18n="ttl1d">1日間 (24時間後消滅)</option>
+                  <option value="259200" selected data-i18n="ttl3d">3日間 (72時間後消滅)</option>
+                  <option value="604800" data-i18n="ttl7d">7日間 (168時間後消滅)</option>
+                </select>
+              </label>
+
+              <!-- 安全な Cloudflare 接続情報アコーディオン -->
+              <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion">
+                <summary data-i18n="cfTitle">☁️ Cloudflare 情報</summary>
+                <div class="settings-content" style="padding: 14px 0 4px; display: flex; flex-direction: column; gap: 10px;">
+                  <label class="field">
+                    <span><span data-i18n="cfEndpointLabel">Worker エンドポイント URL</span> <span style="color: var(--danger);">*</span></span>
+                    <input id="cfEndpoint" type="url" placeholder="https://my-worker.my-name.workers.dev" spellcheck="false" autocomplete="off">
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfEndpointSub">自分の Cloudflare Worker の URL</span>
+                  </label>
+                  <label class="field">
+                    <span><span data-i18n="cfTokenLabel">API トークン</span> <span style="color: var(--danger);">*</span></span>
+                    <input id="cfToken" type="password" placeholder="your-secret-token" spellcheck="false" autocomplete="off">
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
+                  </label>
+                  <label class="field">
+                    <span><span data-i18n="cfDomainLabel">直リンク配信ドメイン</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
+                    <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
+                  </label>
+                  <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                    <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;" data-i18n="btnSave">保存する</button>
+                    <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホへ共有</button>
+                    <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" class="ghost-button" id="cfDashboardLink" style="display: inline-flex; align-items: center; font-size: 12px; text-decoration: none;">Cloudflare ↗</a>
+                    <button class="ghost-button danger-button" id="cfClearButton" type="button" data-i18n="btnClear">クリア</button>
+                  </div>
+                  <div id="cfStatus" style="font-size: 12px; min-height: 16px;"></div>
+                </div>
+              </details>
+
+              <div class="metadata-warning" style="border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
+                <span class="warning-icon" style="color: #818cf8;">ℹ️</span>
+                <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #c7d2fe; font-size: 11px; line-height: 1.5; margin: 0;">
+                  画像を変換した場合、メタデータの保持に関しては保証できません。Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style="color: #fff;">最大25MBまで</strong>となります。
+                </p>
               </div>
             </div>
           </aside>
