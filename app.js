@@ -57,6 +57,7 @@ const tempTtlSelect = document.querySelector("#tempTtlSelect");
 // KVキャッシュ一覧 & 容量メーター
 const r2FileList = document.querySelector("#r2FileList");
 const deleteSelectedR2FilesButton = document.querySelector("#deleteSelectedR2FilesButton");
+const extendSelectedR2FilesButton = document.querySelector("#extendSelectedR2FilesButton");
 const reloadR2FilesButton = document.querySelector("#reloadR2FilesButton");
 const storageUsage = document.querySelector("#storageUsage");
 const storageUsageBar = document.querySelector("#storageUsageBar");
@@ -1202,8 +1203,10 @@ async function fetchAndRenderR2Files() {
 
       const ext = file.filename ? file.filename.split('.').pop().toLowerCase() : "";
       let thumbHtml = "";
-      if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+      if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
         thumbHtml = `<img class="thumb" alt="" src="${escapeHtml(file.url)}" loading="lazy">`;
+      } else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) {
+        thumbHtml = `<video class="thumb" src="${escapeHtml(file.url)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
       } else {
         thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase() || "FILE")}</div>`;
       }
@@ -1302,9 +1305,55 @@ function insertAtCursor(text) {
   }
 }
 
+function updateSelectedR2ActionButtonsState() {
+  if (!r2FileList) return;
+  const checkedBoxes = r2FileList.querySelectorAll(".r2-file-checkbox:checked");
+  const count = checkedBoxes.length;
+  if (deleteSelectedR2FilesButton) {
+    deleteSelectedR2FilesButton.style.display = count > 0 ? "inline-block" : "none";
+    deleteSelectedR2FilesButton.textContent = `選択削除 (${count})`;
+  }
+  if (extendSelectedR2FilesButton) {
+    extendSelectedR2FilesButton.style.display = count > 0 ? "inline-block" : "none";
+    extendSelectedR2FilesButton.textContent = `選択を一括+24h延長 (${count})`;
+  }
+}
+
+extendSelectedR2FilesButton?.addEventListener("click", async () => {
+  if (!r2FileList || !extendSelectedR2FilesButton) return;
+  const checkedBoxes = Array.from(r2FileList.querySelectorAll(".r2-file-checkbox:checked"));
+  const count = checkedBoxes.length;
+  if (count === 0) return;
+
+  if (!confirm(`選択された ${count} 件のファイルを一括で +24時間 延長しますか？`)) return;
+
+  extendSelectedR2FilesButton.disabled = true;
+  extendSelectedR2FilesButton.textContent = "一括延長中...";
+
+  try {
+    const extendPromises = checkedBoxes.map(async (checkbox) => {
+      const key = checkbox.dataset.key;
+      return fetch(getApiUrl("/api/temp-extend"), {
+        method: "POST",
+        headers: getRequestHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ key }),
+      });
+    });
+
+    await Promise.all(extendPromises);
+    await fetchAndRenderR2Files();
+  } catch (error) {
+    console.error("Batch extend error:", error);
+    alert("一括延長処理中にエラーが発生しました。");
+  } finally {
+    if (extendSelectedR2FilesButton) extendSelectedR2FilesButton.disabled = false;
+    updateSelectedR2ActionButtonsState();
+  }
+});
+
 r2FileList?.addEventListener("change", (event) => {
   if (event.target.classList.contains("r2-file-checkbox")) {
-    updateDeleteSelectedButtonState();
+    updateSelectedR2ActionButtonsState();
   }
 });
 
