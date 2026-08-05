@@ -878,22 +878,26 @@ function renderResults() {
 }
 
 function createActionHtml(result) {
-  const downloadBtn = `<button type="button" class="secondary-button download-single-btn" data-url="${escapeHtml(result.url)}" data-name="${escapeHtml(result.name)}">ダウンロード</button>`;
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+  const downloadText = lang === "en" ? "Download" : "ダウンロード";
+  const uploadText = lang === "en" ? "Upload" : "アップロード";
+  const downloadBtn = `<button type="button" class="primary-button download-single-btn" data-url="${escapeHtml(result.url)}" data-name="${escapeHtml(result.name)}">${downloadText}</button>`;
 
   if (result.isUploading) {
-    return `<span class="status-text saving">アップロード中...</span>`;
+    return `<span class="status-text saving">${lang === "en" ? "Uploading..." : "アップロード中..."}</span>`;
   }
   if (result.isUploaded) {
     return `
       <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly>
+      <button type="button" class="ghost-button copy-button">${escapeHtml(dict.copyUrl)}</button>
       ${downloadBtn}
-      <button type="button" class="ghost-button copy-button">コピー</button>
       <button type="button" class="ghost-button delete-button danger-button" aria-label="削除">&times;</button>
     `;
   }
   return `
+    <button type="button" class="ghost-button upload-button">${uploadText}</button>
     ${downloadBtn}
-    <button type="button" class="primary-button upload-button">アップロード</button>
   `;
 }
 
