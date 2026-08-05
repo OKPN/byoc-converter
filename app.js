@@ -65,6 +65,8 @@ const i18nDict = {
     promptNew: "🆕 新しい定型文を追加...",
     promptSave: "定型文を保存",
     promptDelete: "削除",
+    btnSaveShort: "保存",
+    btnCancelShort: "戻る",
     timeRemainingDays: "あと {d}日 {h}時間 で自動消滅",
     timeRemainingHours: "あと {h}時間 {m}分 で自動消滅",
     timeRemainingMinutes: "あと {m}分 で自動消滅",
@@ -130,6 +132,8 @@ const i18nDict = {
     promptNew: "🆕 Add New Template...",
     promptSave: "Save Template",
     promptDelete: "Delete",
+    btnSaveShort: "Save",
+    btnCancelShort: "Cancel",
     timeRemainingDays: "Auto-expires in {d}d {h}h",
     timeRemainingHours: "Auto-expires in {h}h {m}m",
     timeRemainingMinutes: "Auto-expires in {m}m",
@@ -1567,34 +1571,82 @@ r2FileList?.addEventListener("click", async (event) => {
     const oldKey = btn.dataset.key;
     if (!oldKey) return;
 
+    const row = btn.closest(".item-name-row");
+    if (!row) return;
+
     const lastDotIndex = oldKey.lastIndexOf(".");
     const baseName = lastDotIndex > 0 ? oldKey.substring(0, lastDotIndex) : oldKey;
     const ext = lastDotIndex > 0 ? oldKey.substring(lastDotIndex) : "";
 
-    const newBaseName = prompt(`新しいファイル名を入力してください\n(拡張子 ${ext} は自動維持されます):`, baseName);
-    if (!newBaseName || newBaseName.trim() === "" || newBaseName.trim() === baseName) return;
+    const lang = getAppLanguage();
+    const dict = i18nDict[lang] || i18nDict.ja;
+    const saveText = dict.btnSaveShort || (lang === "en" ? "Save" : "保存");
+    const cancelText = dict.btnCancelShort || (lang === "en" ? "Cancel" : "戻る");
 
-    const finalNewName = newBaseName.trim() + ext;
+    const originalHtml = row.innerHTML;
 
-    try {
-      btn.disabled = true;
-      const response = await fetch(getApiUrl("/api/temp-rename"), {
-        method: "POST",
-        headers: getRequestHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ oldKey, newName: finalNewName }),
+    row.innerHTML = `
+      <div class="rename-inline-form" style="display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap;">
+        <input type="text" class="rename-input" value="${escapeHtml(baseName)}" style="flex: 1; min-width: 110px; height: 32px; border: 1px solid var(--border); border-radius: 4px; background: #121316; color: var(--text); padding: 0 8px; font-size: 13px; outline: none;">
+        <span class="rename-ext" style="font-size: 13px; color: var(--muted); font-weight: bold;">${escapeHtml(ext)}</span>
+        <button type="button" class="primary-button rename-save-btn" data-key="${escapeHtml(oldKey)}" style="min-height: 32px; padding: 0 10px; font-size: 12px; font-weight: bold;">${escapeHtml(saveText)}</button>
+        <button type="button" class="ghost-button rename-cancel-btn" style="min-height: 32px; padding: 0 10px; font-size: 12px;">${escapeHtml(cancelText)}</button>
+      </div>
+    `;
+
+    const input = row.querySelector(".rename-input");
+    const saveBtn = row.querySelector(".rename-save-btn");
+    const cancelBtn = row.querySelector(".rename-cancel-btn");
+
+    if (input) {
+      input.focus();
+      input.select();
+
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveBtn?.click();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          cancelBtn?.click();
+        }
       });
+    }
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "リネームエラー" }));
-        throw new Error(err.error || "リネームに失敗しました");
+    cancelBtn?.addEventListener("click", () => {
+      row.innerHTML = originalHtml;
+    });
+
+    saveBtn?.addEventListener("click", async () => {
+      const newBaseName = input?.value?.trim();
+      if (!newBaseName || newBaseName === baseName) {
+        row.innerHTML = originalHtml;
+        return;
       }
 
-      await fetchAndRenderR2Files();
-    } catch (err) {
-      alert("エラー: " + err.message);
-    } finally {
-      btn.disabled = false;
-    }
+      const finalNewName = newBaseName + ext;
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "...";
+        const response = await fetch(getApiUrl("/api/temp-rename"), {
+          method: "POST",
+          headers: getRequestHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ oldKey, newName: finalNewName }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: "リネームエラー" }));
+          throw new Error(err.error || "リネームに失敗しました");
+        }
+
+        await fetchAndRenderR2Files();
+      } catch (err) {
+        alert("エラー: " + err.message);
+        row.innerHTML = originalHtml;
+      }
+    });
+    return;
   }
 
   if (target.classList.contains("copy-button")) {
