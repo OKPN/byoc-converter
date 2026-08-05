@@ -417,6 +417,10 @@ function checkAndApplyHashSync() {
             localStorage.removeItem("cfDirectDomain");
           }
 
+          if (cfEndpoint) cfEndpoint.value = payload.e;
+          if (cfToken) cfToken.value = payload.t;
+          if (cfDirectDomain) cfDirectDomain.value = payload.d || "";
+
           // 即座に URL から #sync=... を消去して痕跡を消す！
           history.replaceState(null, "", window.location.pathname + window.location.search);
         }
@@ -444,14 +448,15 @@ const saveCfSettingsAuto = () => {
   const token    = cfToken?.value?.trim()    || "";
   const direct   = cfDirectDomain?.value?.trim() || "";
 
-  if (endpoint) localStorage.setItem("cfEndpoint", endpoint);
-  else localStorage.removeItem("cfEndpoint");
-
-  if (token) localStorage.setItem("cfToken", token);
-  else localStorage.removeItem("cfToken");
-
-  if (direct) localStorage.setItem("cfDirectDomain", direct);
-  else localStorage.removeItem("cfDirectDomain");
+  if (endpoint) {
+    localStorage.setItem("cfEndpoint", endpoint);
+  }
+  if (token) {
+    localStorage.setItem("cfToken", token);
+  }
+  if (direct) {
+    localStorage.setItem("cfDirectDomain", direct);
+  }
 
   const isConfigured = updateCfStatus();
   render();
