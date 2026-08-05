@@ -780,11 +780,15 @@ function render() {
       item.className = "file-item";
       
       let thumbHtml = "";
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isVideo = (file.type && file.type.startsWith("video/")) || ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
+
       if (file.type.startsWith("image/")) {
         thumbHtml = `<img class="thumb" alt="" src="${URL.createObjectURL(file)}">`;
+      } else if (isVideo) {
+        thumbHtml = `<video class="thumb" src="${URL.createObjectURL(file)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
       } else {
-        const ext = file.name.split('.').pop().toUpperCase();
-        thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext)}</div>`;
+        thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase())}</div>`;
       }
 
       item.innerHTML = `
@@ -832,9 +836,16 @@ function renderResults() {
     item.dataset.id = result.id;
 
     let thumbHtml = "";
+    const ext = result.name.split('.').pop().toLowerCase();
+    const isVideo = ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
+
     if (result.isNonImage) {
-      const ext = result.name.split('.').pop().toUpperCase();
-      thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext)}</div>`;
+      if (isVideo) {
+        const videoSrc = result.proxyUrl || result.url;
+        thumbHtml = `<video class="thumb" src="${escapeHtml(videoSrc)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
+      } else {
+        thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase())}</div>`;
+      }
     } else if (result.previewUrl) {
       thumbHtml = `<img class="thumb" alt="" src="${result.previewUrl}">`;
     } else {
