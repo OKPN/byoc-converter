@@ -1408,7 +1408,10 @@ async function fetchAndRenderR2Files() {
           ${thumbHtml}
         </a>
         <div style="flex: 1; min-width: 0;">
-          <div class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</div>
+          <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
+            <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
+          </div>
           <div class="item-meta" style="color: #ff9800; font-weight: bold; margin-top: 4px; font-size: 13px;">⏳ ${escapeHtml(timeText)}</div>
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -1558,6 +1561,41 @@ r2FileList?.addEventListener("change", (event) => {
 
 r2FileList?.addEventListener("click", async (event) => {
   const target = event.target;
+
+  if (target.classList.contains("rename-file-btn") || target.closest(".rename-file-btn")) {
+    const btn = target.classList.contains("rename-file-btn") ? target : target.closest(".rename-file-btn");
+    const oldKey = btn.dataset.key;
+    if (!oldKey) return;
+
+    const lastDotIndex = oldKey.lastIndexOf(".");
+    const baseName = lastDotIndex > 0 ? oldKey.substring(0, lastDotIndex) : oldKey;
+    const ext = lastDotIndex > 0 ? oldKey.substring(lastDotIndex) : "";
+
+    const newBaseName = prompt(`新しいファイル名を入力してください\n(拡張子 ${ext} は自動維持されます):`, baseName);
+    if (!newBaseName || newBaseName.trim() === "" || newBaseName.trim() === baseName) return;
+
+    const finalNewName = newBaseName.trim() + ext;
+
+    try {
+      btn.disabled = true;
+      const response = await fetch(getApiUrl("/api/temp-rename"), {
+        method: "POST",
+        headers: getRequestHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ oldKey, newName: finalNewName }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "リネームエラー" }));
+        throw new Error(err.error || "リネームに失敗しました");
+      }
+
+      await fetchAndRenderR2Files();
+    } catch (err) {
+      alert("エラー: " + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
   if (target.classList.contains("copy-button")) {
     const url = target.dataset.url || target.closest(".result-item")?.querySelector("a.thumb-link")?.href;
