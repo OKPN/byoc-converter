@@ -86,11 +86,6 @@
               </select>
             </label>
 
-            <div class="metadata-warning" style="margin-top: 14px;">
-              <span class="warning-icon">⚠️</span>
-              <p>プライバシー保護および軽量化のため、変換後の画像からはExifやComfyUIワークフローなどのメタデータがすべての形式で完全に削除されます。</p>
-            </div>
-
             <!-- 安全な Cloudflare 接続情報アコーディオン（前と同じ位置） -->
             <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion" style="margin-top: 16px;">
               <summary>☁️ Cloudflare 情報</summary>
@@ -120,7 +115,10 @@
 
             <div class="metadata-warning" style="margin-top: 12px; border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
               <span class="warning-icon" style="color: #818cf8;">ℹ️</span>
-              <p style="color: #c7d2fe;">Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style="color: #fff;">最大25MBまで</strong>となります。</p>
+              <div style="color: #c7d2fe; font-size: 12px; line-height: 1.5;">
+                <p style="margin: 0 0 4px 0;">Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style="color: #fff;">最大25MBまで</strong>となります。</p>
+                <p style="margin: 0; opacity: 0.9;">画像を変換した場合、メタデータの保持に関しては保証できません。</p>
+              </div>
             </div>
 
             <div class="action-buttons-group" style="margin-top: 20px;">
