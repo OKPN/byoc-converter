@@ -317,7 +317,6 @@ function updateCfStatus() {
   const uploadButtons = [convertUploadButton, uploadRenameButton, uploadOriginalButton];
   if (!isConfigured) {
     uploadButtons.forEach(btn => { if (btn) btn.disabled = true; });
-    if (cfSettingsAccordion && state.files.length === 0) cfSettingsAccordion.open = true;
   }
   return isConfigured;
 }
