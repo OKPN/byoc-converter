@@ -68,9 +68,9 @@ const extensions = {
   "image/jxl": "jxl",
 };
 
-const DEFAULT_R2_DEV_URL = import.meta.env.VITE_DEFAULT_R2_DEV_URL || "https://pub-af80885fa5b341b882bfaccce7d29530.r2.dev";
-const DEFAULT_API_ENDPOINT = import.meta.env.VITE_DEFAULT_API_ENDPOINT || "";
-const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || "";
+const DEFAULT_R2_DEV_URL = (typeof import.meta !== "undefined" && import.meta && import.meta.env && import.meta.env.VITE_DEFAULT_R2_DEV_URL) || "https://pub-af80885fa5b341b882bfaccce7d29530.r2.dev";
+const DEFAULT_API_ENDPOINT = (typeof import.meta !== "undefined" && import.meta && import.meta.env && import.meta.env.VITE_DEFAULT_API_ENDPOINT) || "";
+const DEFAULT_API_TOKEN = (typeof import.meta !== "undefined" && import.meta && import.meta.env && import.meta.env.VITE_DEFAULT_API_TOKEN) || "";
 
 const defaultTemplates = {
   "morning": { name: "朝の挨拶", text: "おはよー！\n{url}" },
@@ -299,22 +299,36 @@ function updateStorageUsageUI() {
 // 起動時の初期ロード
 loadSettings();
 
+// ☁️ Cloudflare 情報 — リアルタイム自動保存
+const saveCfSettingsAuto = () => {
+  const endpoint = cfEndpoint?.value?.trim() || "";
+  const token    = cfToken?.value?.trim()    || "";
+  const direct   = cfDirectDomain?.value?.trim() || "";
+  if (endpoint) localStorage.setItem("cfEndpoint", endpoint);
+  else localStorage.removeItem("cfEndpoint");
+  if (token) localStorage.setItem("cfToken", token);
+  else localStorage.removeItem("cfToken");
+  if (direct) localStorage.setItem("cfDirectDomain", direct);
+  else localStorage.removeItem("cfDirectDomain");
+  updateCfStatus();
+  render();
+};
+
+cfEndpoint?.addEventListener("input", saveCfSettingsAuto);
+cfToken?.addEventListener("input", saveCfSettingsAuto);
+cfDirectDomain?.addEventListener("input", saveCfSettingsAuto);
+
 // ☁️ Cloudflare 情報 — 保存ボタン
 cfSaveButton?.addEventListener("click", () => {
   const endpoint = cfEndpoint?.value?.trim() || "";
   const token    = cfToken?.value?.trim()    || "";
-  const direct   = cfDirectDomain?.value?.trim() || "";
 
   if (!endpoint || !token) {
     if (cfStatus) cfStatus.innerHTML = `<span style="color: var(--danger);">⚠️ Worker URL と API トークンは必須です</span>`;
     return;
   }
 
-  localStorage.setItem("cfEndpoint", endpoint);
-  localStorage.setItem("cfToken", token);
-  localStorage.setItem("cfDirectDomain", direct);
-  updateCfStatus();
-  render(); // ボタン有効/無効を再計算
+  saveCfSettingsAuto();
   if (cfSettingsAccordion) cfSettingsAccordion.open = false;
 });
 
