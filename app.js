@@ -65,6 +65,10 @@ const i18nDict = {
     promptNew: "🆕 新しい定型文を追加...",
     promptSave: "定型文を保存",
     promptDelete: "削除",
+    timeRemainingDays: "あと {d}日 {h}時間 で自動消滅",
+    timeRemainingHours: "あと {h}時間 {m}分 で自動消滅",
+    timeRemainingMinutes: "あと {m}分 で自動消滅",
+    timeExpired: "消滅済み (期限切れ)",
   },
   en: {
     siteTitle: "BYOC Converter",
@@ -126,6 +130,10 @@ const i18nDict = {
     promptNew: "🆕 Add New Template...",
     promptSave: "Save Template",
     promptDelete: "Delete",
+    timeRemainingDays: "Auto-expires in {d}d {h}h",
+    timeRemainingHours: "Auto-expires in {h}h {m}m",
+    timeRemainingMinutes: "Auto-expires in {m}m",
+    timeExpired: "Expired",
   }
 };
 
@@ -1409,14 +1417,20 @@ async function fetchAndRenderR2Files() {
 function formatRemainingTime(seconds) {
   const lang = getAppLanguage();
   const dict = i18nDict[lang] || i18nDict.ja;
-  if (seconds <= 0) return dict.timeExpired;
+  const expiredText = dict.timeExpired || "消滅済み (期限切れ)";
+  if (seconds <= 0) return expiredText;
+
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (days > 0) return dict.timeRemainingDays.replace("{d}", days).replace("{h}", hours);
-  if (hours > 0) return dict.timeRemainingHours.replace("{h}", hours).replace("{m}", minutes);
-  return dict.timeRemainingMinutes.replace("{m}", minutes);
+  const tDays = dict.timeRemainingDays || "あと {d}日 {h}時間 で自動消滅";
+  const tHours = dict.timeRemainingHours || "あと {h}時間 {m}分 で自動消滅";
+  const tMinutes = dict.timeRemainingMinutes || "あと {m}分 で自動消滅";
+
+  if (days > 0) return tDays.replace("{d}", days).replace("{h}", hours);
+  if (hours > 0) return tHours.replace("{h}", hours).replace("{m}", minutes);
+  return tMinutes.replace("{m}", minutes);
 }
 
 function renderUrlPalette() {
