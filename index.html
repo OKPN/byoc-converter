@@ -134,11 +134,13 @@
             </div>
 
             <div class="action-buttons-group" style="margin-top: 20px;">
-              <button class="primary-button" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload">変換してアップロード</button>
-              <button class="secondary-button" id="uploadRenameButton" type="button" disabled data-i18n="btnUploadRename">リネームだけしてアップロード</button>
-              <button class="secondary-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal">そのままアップロード</button>
-              <button class="ghost-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">変換だけする</button>
-              <button class="ghost-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">変換してダウンロード</button>
+              <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">変換してダウンロード</button>
+              <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">変換だけする</button>
+              <div style="margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <button class="ghost-button" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload">変換してアップロード</button>
+                <button class="ghost-button" id="uploadRenameButton" type="button" disabled data-i18n="btnUploadRename">リネームだけしてアップロード</button>
+                <button class="ghost-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal">そのままアップロード</button>
+              </div>
             </div>
           </aside>
         </div>
@@ -152,8 +154,8 @@
             <progress id="progressBar" value="0" max="100"></progress>
           </div>
           <div class="output-actions">
-            <button class="ghost-button" id="zipButton" type="button" disabled data-i18n="btnZipDownload">ZIPで一括ダウンロード</button>
-            <button class="primary-button" id="uploadAllButton" type="button" disabled data-i18n="btnUploadAll">すべてアップロード</button>
+            <button class="primary-button" id="zipButton" type="button" disabled data-i18n="btnZipDownload">ZIPで一括ダウンロード</button>
+            <button class="ghost-button" id="uploadAllButton" type="button" disabled data-i18n="btnUploadAll">すべてアップロード</button>
           </div>
           <div class="result-list" id="resultList"></div>
         </section>
