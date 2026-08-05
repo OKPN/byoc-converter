@@ -1,7 +1,7 @@
 {
-  "name": "byoc-publisher",
+  "name": "byoc-converter",
   "version": "1.0.0",
-  "description": "BYOC static frontend for Drop Publisher's Cloudflare KV worker",
+  "description": "BYOC static frontend for local image conversion and Cloudflare KV backup",
   "private": false,
   "type": "module",
   "scripts": {
