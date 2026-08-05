@@ -357,6 +357,8 @@ function loadSettings() {
 }
 
 function loadTemplates(selectedValue = "") {
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
   let savedTemplates = {};
   try {
     savedTemplates = JSON.parse(localStorage.getItem("composerTemplates") || "{}");
@@ -367,7 +369,7 @@ function loadTemplates(selectedValue = "") {
   const templates = { ...defaultTemplates, ...savedTemplates };
   if (!templateSelect) return;
   
-  templateSelect.innerHTML = '<option value="">-- 定型文を選択 --</option>';
+  templateSelect.innerHTML = `<option value="">${escapeHtml(dict.promptSelect)}</option>`;
   for (const [key, item] of Object.entries(templates)) {
     const opt = document.createElement("option");
     opt.value = key;
@@ -378,7 +380,7 @@ function loadTemplates(selectedValue = "") {
 
   const optCustom = document.createElement("option");
   optCustom.value = "__new__";
-  optCustom.textContent = "🆕 新しい定型文を追加...";
+  optCustom.textContent = dict.promptNew;
   templateSelect.append(optCustom);
 
   if (selectedValue) {
@@ -1325,15 +1327,17 @@ reloadR2FilesButton?.addEventListener("click", fetchAndRenderR2Files);
 
 async function fetchAndRenderR2Files() {
   if (!r2FileList) return;
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
   const endpoint = (localStorage.getItem("cfEndpoint") || "").trim();
   const token    = (localStorage.getItem("cfToken") || "").trim();
 
   if (!endpoint || !token) {
-    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted);">「☁️ Cloudflare 情報」に Worker URL と API トークンを設定して保存すると、KV内の一覧が表示されます。</span>`;
+    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted);">${escapeHtml(dict.r2NeedConfig)}</span>`;
     return;
   }
 
-  r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">読み込み中...</span>`;
+  r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">${escapeHtml(dict.r2Loading)}</span>`;
   try {
     const response = await fetch(getApiUrl("/api/temp-files"), {
       headers: getRequestHeaders(),
@@ -1354,7 +1358,7 @@ async function fetchAndRenderR2Files() {
 
     r2FileList.innerHTML = "";
     if (!publicFiles.length) {
-      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px;">現在KVに保存中の一時ファイルはありません。</span>`;
+      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px;">${escapeHtml(dict.r2Empty)}</span>`;
       return;
     }
 
@@ -1378,7 +1382,7 @@ async function fetchAndRenderR2Files() {
 
       item.innerHTML = `
         <input type="checkbox" class="r2-file-checkbox" data-key="${escapeHtml(file.key)}" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); align-self: center; margin-right: 4px;">
-        <a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="表示">
+        <a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="View">
           ${thumbHtml}
         </a>
         <div style="flex: 1; min-width: 0;">
@@ -1386,9 +1390,9 @@ async function fetchAndRenderR2Files() {
           <div class="item-meta" style="color: #ff9800; font-weight: bold; margin-top: 4px; font-size: 13px;">⏳ ${escapeHtml(timeText)}</div>
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button type="button" class="ghost-button copy-button" data-url="${escapeHtml(file.url)}">URLコピー</button>
-          <button type="button" class="ghost-button temp-extend-btn" data-key="${escapeHtml(file.key)}" title="有効期限を24時間延長">+24h 延長</button>
-          <button type="button" class="ghost-button danger-button temp-delete-btn" data-key="${escapeHtml(file.key)}">今すぐ消滅</button>
+          <button type="button" class="ghost-button copy-button" data-url="${escapeHtml(file.url)}">${escapeHtml(dict.copyUrl)}</button>
+          <button type="button" class="ghost-button temp-extend-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.extend24h)}</button>
+          <button type="button" class="ghost-button danger-button temp-delete-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.deleteNow)}</button>
         </div>
       `;
       r2FileList.append(item);
@@ -1397,20 +1401,22 @@ async function fetchAndRenderR2Files() {
     updateSelectedR2ActionButtonsState();
   } catch (error) {
     console.error("Fetch temp files UI error:", error);
-    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">一覧の取得に失敗しました: ${escapeHtml(error.message)}</span>`;
+    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">${escapeHtml(dict.statusError)}: ${escapeHtml(error.message)}</span>`;
     updateSelectedR2ActionButtonsState();
   }
 }
 
 function formatRemainingTime(seconds) {
-  if (seconds <= 0) return "消滅済み (期限切れ)";
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+  if (seconds <= 0) return dict.timeExpired;
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (days > 0) return `あと ${days}日 ${hours}時間 で自動消滅`;
-  if (hours > 0) return `あと ${hours}時間 ${minutes}分 で自動消滅`;
-  return `あと ${minutes}分 で自動消滅`;
+  if (days > 0) return dict.timeRemainingDays.replace("{d}", days).replace("{h}", hours);
+  if (hours > 0) return dict.timeRemainingHours.replace("{h}", hours).replace("{m}", minutes);
+  return dict.timeRemainingMinutes.replace("{m}", minutes);
 }
 
 function renderUrlPalette() {
