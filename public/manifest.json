@@ -1,11 +1,11 @@
 {
-  "name": "File Publisher",
-  "short_name": "File Publisher",
-  "start_url": ".",
+  "name": "BYOC Converter",
+  "short_name": "BYOC Converter",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#202227",
   "theme_color": "#202227",
-  "description": "A simple client-side image compression tool.",
+  "description": "BYOC Converter - Bring Your Own Cloudflare Image Converter",
   "icons": [
     {
       "src": "icon-192.png",
