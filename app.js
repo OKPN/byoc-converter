@@ -361,7 +361,7 @@ function loadSettings() {
     renamePattern.value = savedRename;
   }
 
-  const savedLimit = localStorage.getItem("storageLimit") || "10000";
+  const savedLimit = localStorage.getItem("storageLimit") || "1000";
   if (storageLimitRange) storageLimitRange.value = savedLimit;
   updateLimitOutput(savedLimit);
 
@@ -618,17 +618,16 @@ function updateLimitOutput(value) {
   if (!storageLimitOutput) return;
   const mb = Number(value);
   if (mb >= 1000) {
-    const gb = (mb / 1000).toFixed(1);
-    storageLimitOutput.textContent = `${gb} GB`;
+    storageLimitOutput.textContent = `1.0 GB`;
   } else {
-    storageLimitOutput.textContent = `${mb} MB`;
+    storageLimitOutput.textContent = `${(mb / 1000).toFixed(1)} GB`;
   }
 }
 
 function updateStorageUsageUI() {
   if (!storageLimitRange || !storageUsageText || !storageUsageBar) return;
   const totalSize = state.r2TotalSize || 0;
-  const limitMb = Number(storageLimitRange.value) || 10000;
+  const limitMb = Number(storageLimitRange.value) || 1000;
   const limitBytes = limitMb * 1024 * 1024;
   
   const percentage = limitBytes > 0 ? (totalSize / limitBytes) * 100 : 0;
@@ -637,7 +636,7 @@ function updateStorageUsageUI() {
   if (storageUsageBar) storageUsageBar.value = clampedPercentage;
   
   if (storageUsageText) {
-    const formattedLimit = limitMb >= 1000 ? `${(limitMb / 1000).toFixed(1)} GB` : `${limitMb} MB`;
+    const formattedLimit = limitMb >= 1000 ? "1.0 GB" : `${(limitMb / 1000).toFixed(1)} GB`;
     storageUsageText.textContent = `使用量: ${formatBytes(totalSize)} / ${formattedLimit} (${clampedPercentage}%)`;
     
     if (totalSize > limitBytes) {
