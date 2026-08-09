@@ -298,6 +298,16 @@ function buildPublicFileUrl(filenameOrUrl) {
   return baseUrl ? `${baseUrl}${cleanPath}` : filenameOrUrl;
 }
 
+function extractStorageKey(rawUrl) {
+  if (!rawUrl) return "";
+  try {
+    if (typeof rawUrl === "string" && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))) {
+      return decodeURIComponent(new URL(rawUrl).pathname.replace(/^\//, ""));
+    }
+  } catch (e) {}
+  return decodeURIComponent(String(rawUrl).replace(/^\//, ""));
+}
+
 function getPublicUrl(workerUrl) {
   return buildPublicFileUrl(workerUrl);
 }
@@ -1113,7 +1123,7 @@ async function uploadImage(result) {
     const data = await response.json();
     result.isUploaded = true;
     result.proxyUrl = getPublicUrl(data.url);
-    result.storageKey = decodeURIComponent(new URL(data.url).pathname.slice(1));
+    result.storageKey = extractStorageKey(data.url || data.key || result.name);
 
     paletteFiles.unshift({ key: result.storageKey, url: result.proxyUrl });
     renderUrlPalette();
@@ -1160,7 +1170,8 @@ async function uploadFile(file, customFilename = null) {
 
   const data = await response.json();
   const publicUrl = getPublicUrl(data.url);
-  paletteFiles.unshift({ key: decodeURIComponent(new URL(data.url).pathname.slice(1)), url: publicUrl });
+  const key = extractStorageKey(data.url || data.key || file.name);
+  paletteFiles.unshift({ key, url: publicUrl });
   renderUrlPalette();
 
   return data;
