@@ -1141,7 +1141,9 @@ async function uploadFile(file, customFilename = null) {
 
   const newFilename = customFilename || file.name;
   const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
-  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`);
+  const pwdInput = document.querySelector("#tempPasswordInput");
+  const password = pwdInput ? pwdInput.value.trim() : "";
+  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
 
   const response = await fetch(uploadUrl, {
     method: "POST",
@@ -1439,6 +1441,8 @@ async function fetchAndRenderR2Files() {
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
             <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
+            <button type="button" class="set-password-btn" data-key="${escapeHtml(file.key)}" title="閲覧パスワードを設定・変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">🔑</button>
+            ${file.hasPassword ? `<span class="password-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;">🔒 パスワード保護</span>` : ""}
           </div>
           <div class="item-meta" style="color: #ff9800; font-weight: bold; margin-top: 4px; font-size: 13px;">⏳ ${escapeHtml(timeText)}</div>
         </div>
@@ -1662,6 +1666,76 @@ r2FileList?.addEventListener("click", async (event) => {
         if (!response.ok) {
           const err = await response.json().catch(() => ({ error: "リネームエラー" }));
           throw new Error(err.error || "リネームに失敗しました");
+        }
+
+        await fetchAndRenderR2Files();
+      } catch (err) {
+        alert("エラー: " + err.message);
+        row.innerHTML = originalHtml;
+      }
+    });
+    return;
+  }
+
+  if (target.classList.contains("set-password-btn") || target.closest(".set-password-btn")) {
+    const btn = target.classList.contains("set-password-btn") ? target : target.closest(".set-password-btn");
+    const key = btn.dataset.key;
+    if (!key) return;
+
+    const row = btn.closest(".item-name-row");
+    if (!row) return;
+
+    const lang = getAppLanguage();
+    const dict = i18nDict[lang] || i18nDict.ja;
+    const saveText = dict.btnSaveShort || (lang === "en" ? "Save" : "保存");
+    const cancelText = dict.btnCancelShort || (lang === "en" ? "Cancel" : "戻る");
+
+    const originalHtml = row.innerHTML;
+
+    row.innerHTML = `
+      <div class="password-inline-form" style="display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap;">
+        <input type="password" class="password-inline-input" placeholder="🔑 パスワード (空欄で解除)" style="flex: 1; min-width: 140px; height: 32px; border: 1px solid var(--border); border-radius: 4px; background: #121316; color: var(--text); padding: 0 8px; font-size: 13px; outline: none;">
+        <button type="button" class="primary-button password-save-btn" data-key="${escapeHtml(key)}" style="min-height: 32px; padding: 0 10px; font-size: 12px; font-weight: bold;">${escapeHtml(saveText)}</button>
+        <button type="button" class="ghost-button password-cancel-btn" style="min-height: 32px; padding: 0 10px; font-size: 12px;">${escapeHtml(cancelText)}</button>
+      </div>
+    `;
+
+    const input = row.querySelector(".password-inline-input");
+    const saveBtn = row.querySelector(".password-save-btn");
+    const cancelBtn = row.querySelector(".password-cancel-btn");
+
+    if (input) {
+      input.focus();
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveBtn?.click();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          cancelBtn?.click();
+        }
+      });
+    }
+
+    cancelBtn?.addEventListener("click", () => {
+      row.innerHTML = originalHtml;
+    });
+
+    saveBtn?.addEventListener("click", async () => {
+      const newPassword = input?.value?.trim() || "";
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "...";
+        const response = await fetch(getApiUrl("/api/temp-set-password"), {
+          method: "POST",
+          headers: getRequestHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ key, password: newPassword }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: "設定エラー" }));
+          throw new Error(err.error || "パスワード設定に失敗しました");
         }
 
         await fetchAndRenderR2Files();
