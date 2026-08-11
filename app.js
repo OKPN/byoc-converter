@@ -1,4 +1,4 @@
-import QRCode from "qrcode";
+﻿import QRCode from "qrcode";
 
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
@@ -1153,12 +1153,13 @@ async function uploadFile(file, customFilename = null) {
   const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
   const pwdInput = document.querySelector("#tempPasswordInput");
   const password = pwdInput ? pwdInput.value.trim() : "";
-  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
+  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`);
 
   const response = await fetch(uploadUrl, {
     method: "POST",
     headers: getRequestHeaders({
       "Content-Type": file.type || "application/octet-stream",
+      ...(password ? { "X-Upload-Password": password } : {}),
     }),
     body: file,
   });
@@ -1452,7 +1453,6 @@ async function fetchAndRenderR2Files() {
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
             <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
-            <button type="button" class="set-password-btn" data-key="${escapeHtml(file.key)}" title="閲覧パスワードを設定・変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">🔑</button>
             ${file.hasPassword ? `<span class="password-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;">🔒 パスワード保護</span>` : ""}
           </div>
           <div class="item-meta" style="color: #ff9800; font-weight: bold; margin-top: 4px; font-size: 13px;">⏳ ${escapeHtml(timeText)}</div>
@@ -1688,13 +1688,655 @@ r2FileList?.addEventListener("click", async (event) => {
     return;
   }
 
-  if (target.classList.contains("set-password-btn") || target.closest(".set-password-btn")) {
-    const btn = target.classList.contains("set-password-btn") ? target : target.closest(".set-password-btn");
-    const key = btn.dataset.key;
-    if (!key) return;
+  if (target.classList.contains("copy-button")) {
+    const item = target.closest(".result-item");
+    const inputUrl = item?.querySelector(".url-output")?.value;
+    const urlToCopy = result.proxyUrl || inputUrl || target.dataset.url;
+    await copyToClipboard(urlToCopy, target);
+  }
+
+  if (target.classList.contains("delete-button")) {
+    await deleteImage(result);
+  }
+});
+
+// --- 画像変換処理 ---
+
+async function runConversion() {
+  if (!state.files.length) return false;
+  if (zipButton) zipButton.disabled = true;
+  if (progressBar) progressBar.value = 0;
+  if (statusText) {
+    statusText.textContent = "変換中...";
+    statusText.className = "saving";
+  }
+
+  state.results.forEach((result) => {
+    if (result) {
+      if (result.url) URL.revokeObjectURL(result.url);
+      if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
+    }
+  });
+  state.results = [];
+  renderResults();
+  setUiLock(true);
+
+  try {
+    state.results = new Array(state.files.length).fill(null);
+
+    const conversionPromises = state.files.map((file, index) =>
+      convertImage(file, index).then(result => {
+        state.results[index] = result;
+        const finishedCount = state.results.filter(r => r !== null).length;
+        if (progressBar) progressBar.value = Math.round((finishedCount / state.files.length) * 100);
+        renderResults();
+      })
+    );
+    await Promise.all(conversionPromises);
+    if (statusText) {
+      statusText.textContent = "変換完了";
+      statusText.className = "";
+    }
+    return true;
+  } catch (error) {
+    console.error("Conversion error:", error);
+    if (statusText) {
+      statusText.textContent = "変換失敗";
+      statusText.className = "error";
+    }
+    return false;
+  } finally {
+    setUiLock(false);
+    updateZipButtonState();
+    updateUploadAllButtonState();
+  }
+}
+
+async function convertImage(file, index = 0) {
+  if (!file.type.startsWith("image/")) {
+    const url = URL.createObjectURL(file);
+    const outputName = createOutputName(file.name, null, index);
+    return {
+      id: crypto.randomUUID(),
+      name: outputName,
+      relativePath: file.relativePath || file.name,
+      url,
+      previewUrl: "",
+      blob: file,
+      size: file.size,
+      originalSize: file.size,
+      isNonImage: true,
+    };
+  }
+
+  const options = {
+    mimeType: formatSelect ? formatSelect.value : "image/webp",
+    quality: qualityRange ? Number(qualityRange.value) / 100 : 0.85,
+    name: createOutputName(file.name, formatSelect ? formatSelect.value : "image/webp", index),
+  };
+
+  let finalBlob = null;
+
+  try {
+    const image = await loadImage(file);
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    const context = canvas.getContext("2d", { alpha: true });
+    context.drawImage(image, 0, 0);
+
+    finalBlob = await canvasToBlob(canvas, options.mimeType, options.quality);
+  } catch (err) {
+    console.warn("Canvas conversion fallback failed, using original blob:", err);
+    finalBlob = file;
+  }
+
+  const finalUrl = URL.createObjectURL(finalBlob);
+
+  return {
+    id: crypto.randomUUID(),
+    name: options.name,
+    relativePath: file.relativePath || file.name,
+    url: finalUrl,
+    previewUrl: finalUrl,
+    blob: finalBlob,
+    size: finalBlob.size,
+    originalSize: file.size,
+    isNonImage: false,
+  };
+}
+
+// --- アップロード処理 (ユーザーのlocalStorageから動的に送信) ---
+
+async function uploadImage(result) {
+  if (!updateCfStatus()) {
+    alert("Worker URL と API トークンを「☁️ Cloudflare 情報」に入力して保存してください。");
+    return;
+  }
+
+  if (result.size > KV_MAX_SIZE) {
+    result.error = "25MBを超えるファイルはKVに保存できません（上限: 25MB）";
+    renderResults();
+    return;
+  }
+
+  result.isUploading = true;
+  renderResults();
+
+  try {
+    const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
+    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}`);
+
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: getRequestHeaders({
+        "Content-Type": result.blob ? (result.blob.type || "application/octet-stream") : "application/octet-stream",
+      }),
+      body: result.blob,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "サーバーエラー" }));
+      throw new Error(errorData.error || "アップロードエラー");
+    }
+
+    const data = await response.json();
+    result.isUploaded = true;
+    result.proxyUrl = getPublicUrl(data.url);
+    result.storageKey = extractStorageKey(data.url || data.key || result.name);
+
+    paletteFiles.unshift({ key: result.storageKey, url: result.proxyUrl });
+    renderUrlPalette();
+
+    await fetchAndRenderR2Files();
+
+  } catch (error) {
+    result.error = error.message;
+    alert(`アップロード失敗: ${error.message}`);
+    console.error("Upload failed:", error);
+  } finally {
+    result.isUploading = false;
+    renderResults();
+  }
+}
+
+async function uploadFile(file, customFilename = null) {
+  if (!updateCfStatus()) {
+    throw new Error("Worker URL と API トークンを設定してください");
+  }
+
+  if (file.size > KV_MAX_SIZE) {
+    throw new Error(`'${file.name}' は25MBを超えているためアップロードできません`);
+  }
+
+  const newFilename = customFilename || file.name;
+  const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
+  const pwdInput = document.querySelector("#tempPasswordInput");
+  const password = pwdInput ? pwdInput.value.trim() : "";
+  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`);
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: getRequestHeaders({
+      "Content-Type": file.type || "application/octet-stream",
+      ...(password ? { "X-Upload-Password": password } : {}),
+    }),
+    body: file,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "サーバーエラー" }));
+    throw new Error(`'${file.name}' のアップロードに失敗: ${errorData.error}`);
+  }
+
+  const data = await response.json();
+  const publicUrl = getPublicUrl(data.url);
+  const key = extractStorageKey(data.url || data.key || file.name);
+  paletteFiles.unshift({ key, url: publicUrl });
+  renderUrlPalette();
+
+  return data;
+}
+
+// ボタンイベントリスナー群
+
+convertButton?.addEventListener("click", async () => {
+  await runConversion();
+});
+
+convertUploadButton?.addEventListener("click", async () => {
+  if (!state.files.length) return;
+  const success = await runConversion();
+  if (!success) return;
+
+  const targets = state.results.filter(r => r && !r.isUploaded && !r.isUploading);
+  if (targets.length === 0) return;
+
+  setUiLock(true);
+  if (statusText) {
+    statusText.className = "saving";
+    statusText.textContent = `アップロード中 (0/${targets.length})`;
+  }
+  if (progressBar) progressBar.value = 0;
+
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const result = targets[i];
+      if (statusText) statusText.textContent = `アップロード中 (${i + 1}/${targets.length})`;
+      await uploadImage(result);
+      if (progressBar) progressBar.value = Math.round(((i + 1) / targets.length) * 100);
+    }
+    if (statusText) statusText.textContent = "一括アップロード完了";
+  } catch (error) {
+    console.error("Upload failed:", error);
+    if (statusText) {
+      statusText.textContent = `アップロード失敗: ${error.message}`;
+      statusText.className = "error";
+    }
+  } finally {
+    setUiLock(false);
+    updateUploadAllButtonState();
+    await fetchAndRenderR2Files();
+  }
+});
+
+convertDownloadButton?.addEventListener("click", async () => {
+  const success = await runConversion();
+  if (!success) return;
+
+  if (statusText) statusText.textContent = "自動ダウンロード中...";
+  for (const result of state.results) {
+    if (result && result.url) {
+      downloadUrl(result.url, result.name);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  }
+  if (statusText) statusText.textContent = "自動ダウンロード完了";
+});
+
+uploadOriginalButton?.addEventListener("click", async () => {
+  if (!state.files.length) return;
+  setUiLock(true);
+  if (statusText) {
+    statusText.textContent = `アップロード中 (0/${state.files.length})`;
+    statusText.className = "saving";
+  }
+  if (progressBar) progressBar.value = 0;
+
+  try {
+    let completedCount = 0;
+    for (const file of state.files) {
+      await uploadFile(file);
+      completedCount++;
+      if (statusText) statusText.textContent = `アップロード中 (${completedCount}/${state.files.length})`;
+      if (progressBar) progressBar.value = Math.round((completedCount / state.files.length) * 100);
+    }
+    if (statusText) statusText.textContent = "そのままアップロード完了";
+    state.files = [];
+    render();
+    await fetchAndRenderR2Files();
+  } catch (error) {
+    console.error(error);
+    if (statusText) {
+      statusText.textContent = error.message;
+      statusText.className = "error";
+    }
+  } finally {
+    setUiLock(false);
+  }
+});
+
+uploadRenameButton?.addEventListener("click", async () => {
+  if (!state.files.length) return;
+  setUiLock(true);
+  if (statusText) {
+    statusText.textContent = `アップロード中 (0/${state.files.length})`;
+    statusText.className = "saving";
+  }
+  if (progressBar) progressBar.value = 0;
+
+  try {
+    let completedCount = 0;
+    for (let index = 0; index < state.files.length; index++) {
+      const file = state.files[index];
+      const newFilename = createOutputName(file.name, null, index);
+      await uploadFile(file, newFilename);
+      completedCount++;
+      if (statusText) statusText.textContent = `アップロード中 (${completedCount}/${state.files.length})`;
+      if (progressBar) progressBar.value = Math.round((completedCount / state.files.length) * 100);
+    }
+    if (statusText) statusText.textContent = "リネームアップロード完了";
+    state.files = [];
+    render();
+    await fetchAndRenderR2Files();
+  } catch (error) {
+    console.error(error);
+    if (statusText) {
+      statusText.textContent = error.message;
+      statusText.className = "error";
+    }
+  } finally {
+    setUiLock(false);
+  }
+});
+
+function updateZipButtonState() {
+  if (zipButton) {
+    const unuploaded = state.results ? state.results.filter(r => r && !r.isUploaded) : [];
+    zipButton.disabled = unuploaded.length === 0;
+  }
+}
+
+function updateUploadAllButtonState() {
+  if (uploadAllButton) {
+    const cfOk = updateCfStatus();
+    const unuploaded = state.results ? state.results.filter(r => r && !r.isUploaded && !r.isUploading) : [];
+    uploadAllButton.disabled = unuploaded.length === 0 || !cfOk;
+  }
+}
+
+uploadAllButton?.addEventListener("click", async () => {
+  const targets = state.results ? state.results.filter(r => r && !r.isUploaded && !r.isUploading) : [];
+  if (targets.length === 0) return;
+
+  const validTargets = targets.filter(r => r.size <= KV_MAX_SIZE);
+  if (validTargets.length === 0) return;
+
+  setUiLock(true);
+  if (statusText) {
+    statusText.className = "saving";
+    statusText.textContent = `一括アップロード中 (0/${validTargets.length})`;
+  }
+  if (progressBar) progressBar.value = 0;
+
+  try {
+    for (let i = 0; i < validTargets.length; i++) {
+      const result = validTargets[i];
+      if (statusText) statusText.textContent = `一括アップロード中 (${i + 1}/${validTargets.length})`;
+      await uploadImage(result);
+      if (progressBar) progressBar.value = Math.round(((i + 1) / validTargets.length) * 100);
+    }
+    if (statusText) statusText.textContent = "一括アップロード完了";
+  } catch (error) {
+    console.error(error);
+    if (statusText) {
+      statusText.textContent = `一括アップロード失敗: ${error.message}`;
+      statusText.className = "error";
+    }
+  } finally {
+    setUiLock(false);
+    updateUploadAllButtonState();
+    await fetchAndRenderR2Files();
+  }
+});
+
+zipButton?.addEventListener("click", async () => {
+  if (!zipButton || !state.results.length) return;
+  zipButton.disabled = true;
+  if (statusText) {
+    statusText.textContent = "ZIP作成中...";
+    statusText.className = "saving";
+  }
+
+  try {
+    const entries = [];
+    for (const result of state.results) {
+      if (result && result.blob) {
+        entries.push({
+          name: result.name,
+          data: new Uint8Array(await result.blob.arrayBuffer()),
+        });
+      }
+    }
+
+    const zipBlob = createZip(entries);
+    const url = URL.createObjectURL(zipBlob);
+    downloadUrl(url, "converted-images.zip");
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (statusText) statusText.textContent = "ZIP一括ダウンロード完了";
+  } catch (error) {
+    console.error("Zip error:", error);
+    if (statusText) {
+      statusText.textContent = "ZIP失敗";
+      statusText.className = "error";
+    }
+  } finally {
+    updateZipButtonState();
+  }
+});
+
+// --- KV キャッシュ一覧 & パレット関数 ---
+
+reloadR2FilesButton?.addEventListener("click", fetchAndRenderR2Files);
+
+async function fetchAndRenderR2Files() {
+  if (!r2FileList) return;
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+  const endpoint = (localStorage.getItem("cfEndpoint") || "").trim();
+  const token    = (localStorage.getItem("cfToken") || "").trim();
+
+  if (!endpoint || !token) {
+    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted);">${escapeHtml(dict.r2NeedConfig)}</span>`;
+    return;
+  }
+
+  r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">${escapeHtml(dict.r2Loading)}</span>`;
+  try {
+    const response = await fetch(getApiUrl("/api/temp-files"), {
+      headers: getRequestHeaders(),
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: `HTTP ${response.status} ${response.statusText}` }));
+      throw new Error(errData.error || `HTTP ${response.status}`);
+    }
+    const { files } = await response.json();
+
+    const publicFiles = files ? files.map(f => ({ ...f, url: buildPublicFileUrl(f.url || f.key || f.filename) })) : [];
+    paletteFiles = publicFiles.map(f => ({ key: f.key, url: f.url }));
+    renderUrlPalette();
+
+    const totalSize = publicFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+    state.r2TotalSize = totalSize;
+    updateStorageUsageUI();
+
+    r2FileList.innerHTML = "";
+    if (!publicFiles.length) {
+      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px;">${escapeHtml(dict.r2Empty)}</span>`;
+      return;
+    }
+
+    publicFiles.sort((a, b) => b.remaining - a.remaining);
+
+    publicFiles.forEach(file => {
+      const item = document.createElement("article");
+      item.className = "result-item";
+
+      const ext = file.filename ? file.filename.split('.').pop().toLowerCase() : "";
+      let thumbHtml = "";
+      if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
+        thumbHtml = `<img class="thumb" alt="" src="${escapeHtml(file.url)}" loading="lazy">`;
+      } else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) {
+        thumbHtml = `<video class="thumb" src="${escapeHtml(file.url)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
+      } else {
+        thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase() || "FILE")}</div>`;
+      }
+
+      const timeText = formatRemainingTime(file.remaining);
+
+      item.innerHTML = `
+        <input type="checkbox" class="r2-file-checkbox" data-key="${escapeHtml(file.key)}" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); align-self: center; margin-right: 4px;">
+        <a href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="View">
+          ${thumbHtml}
+        </a>
+        <div style="flex: 1; min-width: 0;">
+          <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
+            <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
+            ${file.hasPassword ? `<span class="password-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;">🔒 パスワード保護</span>` : ""}
+          </div>
+          <div class="item-meta" style="color: #ff9800; font-weight: bold; margin-top: 4px; font-size: 13px;">⏳ ${escapeHtml(timeText)}</div>
+        </div>
+        <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button type="button" class="ghost-button copy-button" data-url="${escapeHtml(file.url)}">${escapeHtml(dict.copyUrl)}</button>
+          <button type="button" class="ghost-button temp-extend-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.extend24h)}</button>
+          <button type="button" class="ghost-button danger-button temp-delete-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.deleteNow)}</button>
+        </div>
+      `;
+      r2FileList.append(item);
+    });
+
+    updateSelectedR2ActionButtonsState();
+  } catch (error) {
+    console.error("Fetch temp files UI error:", error);
+    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">${escapeHtml(dict.statusError)}: ${escapeHtml(error.message)}</span>`;
+    updateSelectedR2ActionButtonsState();
+  }
+}
+
+function formatRemainingTime(seconds) {
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+  const expiredText = dict.timeExpired || "消滅済み (期限切れ)";
+  if (seconds <= 0) return expiredText;
+
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  const tDays = dict.timeRemainingDays || "あと {d}日 {h}時間 で自動消滅";
+  const tHours = dict.timeRemainingHours || "あと {h}時間 {m}分 で自動消滅";
+  const tMinutes = dict.timeRemainingMinutes || "あと {m}分 で自動消滅";
+
+  if (days > 0) return tDays.replace("{d}", days).replace("{h}", hours);
+  if (hours > 0) return tHours.replace("{h}", hours).replace("{m}", minutes);
+  return tMinutes.replace("{m}", minutes);
+}
+
+function renderUrlPalette() {
+  if (!paletteList) return;
+  paletteList.innerHTML = "";
+  
+  if (paletteFiles.length === 0) {
+    paletteList.innerHTML = `<span style="font-size: 11px; color: var(--muted); padding: 8px;">アップロード済みのファイルがありません。</span>`;
+    return;
+  }
+  
+  paletteFiles.forEach(file => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "palette-chip";
+    btn.dataset.url = file.url;
+    btn.title = file.key;
+    
+    const ext = file.key ? file.key.split('.').pop().toLowerCase() : "";
+    if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+      const img = document.createElement("img");
+      img.src = file.url;
+      img.alt = file.key;
+      img.loading = "lazy";
+      btn.append(img);
+    } else {
+      btn.className += " format-badge";
+      btn.textContent = ext.toUpperCase();
+    }
+    
+    btn.addEventListener("click", () => {
+      insertAtCursor(file.url);
+    });
+    
+    paletteList.append(btn);
+  });
+}
+
+function insertAtCursor(text) {
+  if (!composerTextarea) return;
+  const textarea = composerTextarea;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+  
+  if (val.includes("{url}")) {
+    const idx = val.indexOf("{url}");
+    textarea.value = val.replace("{url}", text);
+    const newPos = idx + text.length;
+    textarea.focus();
+    textarea.setSelectionRange(newPos, newPos);
+  } else {
+    textarea.value = val.substring(0, start) + text + val.substring(end);
+    const newPos = start + text.length;
+    textarea.focus();
+    textarea.setSelectionRange(newPos, newPos);
+  }
+}
+
+function updateSelectedR2ActionButtonsState() {
+  if (!r2FileList) return;
+  const checkedBoxes = r2FileList.querySelectorAll(".r2-file-checkbox:checked");
+  const count = checkedBoxes.length;
+  if (deleteSelectedR2FilesButton) {
+    deleteSelectedR2FilesButton.style.display = count > 0 ? "inline-block" : "none";
+    deleteSelectedR2FilesButton.textContent = `選択削除 (${count})`;
+  }
+  if (extendSelectedR2FilesButton) {
+    extendSelectedR2FilesButton.style.display = count > 0 ? "inline-block" : "none";
+    extendSelectedR2FilesButton.textContent = `選択を一括+24h延長 (${count})`;
+  }
+}
+
+extendSelectedR2FilesButton?.addEventListener("click", async () => {
+  if (!r2FileList || !extendSelectedR2FilesButton) return;
+  const checkedBoxes = Array.from(r2FileList.querySelectorAll(".r2-file-checkbox:checked"));
+  const count = checkedBoxes.length;
+  if (count === 0) return;
+
+  if (!confirm(`選択された ${count} 件のファイルを一括で +24時間 延長しますか？`)) return;
+
+  extendSelectedR2FilesButton.disabled = true;
+  extendSelectedR2FilesButton.textContent = "一括延長中...";
+
+  try {
+    const extendPromises = checkedBoxes.map(async (checkbox) => {
+      const key = checkbox.dataset.key;
+      return fetch(getApiUrl("/api/temp-extend"), {
+        method: "POST",
+        headers: getRequestHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ key }),
+      });
+    });
+
+    await Promise.all(extendPromises);
+    await fetchAndRenderR2Files();
+  } catch (error) {
+    console.error("Batch extend error:", error);
+    alert("一括延長処理中にエラーが発生しました。");
+  } finally {
+    if (extendSelectedR2FilesButton) extendSelectedR2FilesButton.disabled = false;
+    updateSelectedR2ActionButtonsState();
+  }
+});
+
+r2FileList?.addEventListener("change", (event) => {
+  if (event.target.classList.contains("r2-file-checkbox")) {
+    updateSelectedR2ActionButtonsState();
+  }
+});
+
+r2FileList?.addEventListener("click", async (event) => {
+  const target = event.target;
+
+  if (target.classList.contains("rename-file-btn") || target.closest(".rename-file-btn")) {
+    const btn = target.classList.contains("rename-file-btn") ? target : target.closest(".rename-file-btn");
+    const oldKey = btn.dataset.key;
+    if (!oldKey) return;
 
     const row = btn.closest(".item-name-row");
     if (!row) return;
+
+    const lastDotIndex = oldKey.lastIndexOf(".");
+    const baseName = lastDotIndex > 0 ? oldKey.substring(0, lastDotIndex) : oldKey;
+    const ext = lastDotIndex > 0 ? oldKey.substring(lastDotIndex) : "";
 
     const lang = getAppLanguage();
     const dict = i18nDict[lang] || i18nDict.ja;
@@ -1704,19 +2346,22 @@ r2FileList?.addEventListener("click", async (event) => {
     const originalHtml = row.innerHTML;
 
     row.innerHTML = `
-      <div class="password-inline-form" style="display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap;">
-        <input type="password" class="password-inline-input" placeholder="🔑 パスワード (空欄で解除)" style="flex: 1; min-width: 140px; height: 32px; border: 1px solid var(--border); border-radius: 4px; background: #121316; color: var(--text); padding: 0 8px; font-size: 13px; outline: none;">
-        <button type="button" class="primary-button password-save-btn" data-key="${escapeHtml(key)}" style="min-height: 32px; padding: 0 10px; font-size: 12px; font-weight: bold;">${escapeHtml(saveText)}</button>
-        <button type="button" class="ghost-button password-cancel-btn" style="min-height: 32px; padding: 0 10px; font-size: 12px;">${escapeHtml(cancelText)}</button>
+      <div class="rename-inline-form" style="display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap;">
+        <input type="text" class="rename-input" value="${escapeHtml(baseName)}" style="flex: 1; min-width: 110px; height: 32px; border: 1px solid var(--border); border-radius: 4px; background: #121316; color: var(--text); padding: 0 8px; font-size: 13px; outline: none;">
+        <span class="rename-ext" style="font-size: 13px; color: var(--muted); font-weight: bold;">${escapeHtml(ext)}</span>
+        <button type="button" class="primary-button rename-save-btn" data-key="${escapeHtml(oldKey)}" style="min-height: 32px; padding: 0 10px; font-size: 12px; font-weight: bold;">${escapeHtml(saveText)}</button>
+        <button type="button" class="ghost-button rename-cancel-btn" style="min-height: 32px; padding: 0 10px; font-size: 12px;">${escapeHtml(cancelText)}</button>
       </div>
     `;
 
-    const input = row.querySelector(".password-inline-input");
-    const saveBtn = row.querySelector(".password-save-btn");
-    const cancelBtn = row.querySelector(".password-cancel-btn");
+    const input = row.querySelector(".rename-input");
+    const saveBtn = row.querySelector(".rename-save-btn");
+    const cancelBtn = row.querySelector(".rename-cancel-btn");
 
     if (input) {
       input.focus();
+      input.select();
+
       input.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -1733,20 +2378,26 @@ r2FileList?.addEventListener("click", async (event) => {
     });
 
     saveBtn?.addEventListener("click", async () => {
-      const newPassword = input?.value?.trim() || "";
+      const newBaseName = input?.value?.trim();
+      if (!newBaseName || newBaseName === baseName) {
+        row.innerHTML = originalHtml;
+        return;
+      }
+
+      const finalNewName = newBaseName + ext;
 
       try {
         saveBtn.disabled = true;
         saveBtn.textContent = "...";
-        const response = await fetch(getApiUrl("/api/temp-set-password"), {
+        const response = await fetch(getApiUrl("/api/temp-rename"), {
           method: "POST",
           headers: getRequestHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ key, password: newPassword }),
+          body: JSON.stringify({ oldKey, newName: finalNewName }),
         });
 
         if (!response.ok) {
-          const err = await response.json().catch(() => ({ error: "設定エラー" }));
-          throw new Error(err.error || "パスワード設定に失敗しました");
+          const err = await response.json().catch(() => ({ error: "リネームエラー" }));
+          throw new Error(err.error || "リネームに失敗しました");
         }
 
         await fetchAndRenderR2Files();
