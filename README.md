@@ -56,6 +56,8 @@ To enable temporary cloud uploads, deploy your own instance of the backend worke
 
 👉 **[BYOC Worker GitHub Repository](https://github.com/OKPN/byoc-worker)**
 
+*(Note: If you wish to serve files via a custom domain e.g. `img.yourdomain.com`, simply assign a Custom Domain under Workers Settings in your Cloudflare Dashboard.)*
+
 ---
 
 ## 📄 License
