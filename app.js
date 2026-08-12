@@ -1169,8 +1169,10 @@ async function convertImage(file, index = 0) {
 // --- アップロード処理 (ユーザーのlocalStorageから動的に送信) ---
 
 async function uploadImage(result) {
+  if (!result || !result.blob) return;
+
   if (!updateCfStatus()) {
-    alert("Worker URL と API トークンを「☁️ Cloudflare 情報」に入力して保存してください。");
+    alert("Worker URL と API トークンを設定してください");
     return;
   }
 
@@ -1185,12 +1187,15 @@ async function uploadImage(result) {
 
   try {
     const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
-    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}`);
+    const pwdInput = document.querySelector("#tempPasswordInput");
+    const password = pwdInput ? pwdInput.value.trim() : "";
+    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
 
     const response = await fetch(uploadUrl, {
       method: "POST",
       headers: getRequestHeaders({
         "Content-Type": result.blob ? (result.blob.type || "application/octet-stream") : "application/octet-stream",
+        ...(password ? { "X-Upload-Password": password } : {}),
       }),
       body: result.blob,
     });
@@ -1233,7 +1238,7 @@ async function uploadFile(file, customFilename = null) {
   const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
   const pwdInput = document.querySelector("#tempPasswordInput");
   const password = pwdInput ? pwdInput.value.trim() : "";
-  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}`);
+  const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(newFilename)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
 
   const response = await fetch(uploadUrl, {
     method: "POST",
