@@ -1,4 +1,4 @@
-﻿import QRCode from "qrcode";
+import QRCode from "qrcode";
 
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
@@ -415,9 +415,89 @@ function loadTemplates(selectedValue = "") {
   }
 }
 
+// --- 🔐 PINコードによる暗号化/復号化ヘルパー ---
+function encryptPayloadWithPin(payloadObj, pin) {
+  const jsonStr = JSON.stringify(payloadObj);
+  let result = "";
+  for (let i = 0; i < jsonStr.length; i++) {
+    const charCode = jsonStr.charCodeAt(i) ^ pin.charCodeAt(i % pin.length);
+    result += String.fromCharCode(charCode);
+  }
+  return btoa(encodeURIComponent(result));
+}
+
+function decryptPayloadWithPin(encodedStr, pin) {
+  try {
+    const raw = decodeURIComponent(atob(encodedStr));
+    let result = "";
+    for (let i = 0; i < raw.length; i++) {
+      const charCode = raw.charCodeAt(i) ^ pin.charCodeAt(i % pin.length);
+      result += String.fromCharCode(charCode);
+    }
+    return JSON.parse(result);
+  } catch {
+    return null;
+  }
+}
+
+function generateRandom6DigitPin() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// PINコード付き暗号化バックアップURLの自動発行
+async function generatePinBackupUrl() {
+  const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim();
+  const token    = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  const direct   = (localStorage.getItem("cfDirectDomain") || cfDirectDomain?.value || "").trim();
+
+  if (!endpoint || !token) {
+    alert("⚠️ Worker URL と API トークンを入力して保存してから発行してください");
+    return;
+  }
+
+  const autoPin = generateRandom6DigitPin();
+  const payload = {
+    e: endpoint,
+    t: token,
+    d: direct,
+  };
+
+  const encrypted = encryptPayloadWithPin(payload, autoPin);
+  const backupUrl = `${window.location.origin}${window.location.pathname}#enc=${encrypted}`;
+
+  try {
+    await navigator.clipboard.writeText(backupUrl);
+  } catch (err) {
+    console.error("Clipboard copy error:", err);
+  }
+
+  const pinDisplayModal = document.querySelector("#pinDisplayModal");
+  const generatedPinText = document.querySelector("#generatedPinText");
+  const backupUrlTextarea = document.querySelector("#backupUrlTextarea");
+
+  if (generatedPinText) generatedPinText.textContent = autoPin;
+  if (backupUrlTextarea) backupUrlTextarea.value = backupUrl;
+  if (pinDisplayModal) pinDisplayModal.style.display = "grid";
+}
+
+let pendingEncryptedHash = "";
+
 function checkAndApplyHashSync() {
   try {
     const hash = window.location.hash || "";
+
+    // 暗号化バックアップURLの復元検知
+    if (hash.startsWith("#enc=")) {
+      pendingEncryptedHash = hash.replace("#enc=", "");
+      const pinModal = document.querySelector("#pinModal");
+      const pinInput = document.querySelector("#pinInput");
+      const pinErrorNotice = document.querySelector("#pinErrorNotice");
+      if (pinInput) pinInput.value = "";
+      if (pinErrorNotice) pinErrorNotice.textContent = "";
+      if (pinModal) pinModal.style.display = "grid";
+      return;
+    }
+
     if (hash.startsWith("#sync=")) {
       const encoded = hash.substring(6);
       if (encoded) {
@@ -2091,4 +2171,71 @@ copyComposerTextButton?.addEventListener("click", async () => {
   }
 });
 
+// 🔗 PIN付きバックアップURL発行ボタン
+const cfBackupUrlButton = document.querySelector("#cfBackupUrlButton");
+cfBackupUrlButton?.addEventListener("click", generatePinBackupUrl);
+
+// PIN入力復元モーダルの処理
+const submitPinButton = document.querySelector("#submitPinButton");
+const cancelPinButton = document.querySelector("#cancelPinButton");
+const pinInput = document.querySelector("#pinInput");
+const pinErrorNotice = document.querySelector("#pinErrorNotice");
+const pinModal = document.querySelector("#pinModal");
+
+submitPinButton?.addEventListener("click", () => {
+  const pin = pinInput?.value?.trim() || "";
+  if (!pin) {
+    if (pinErrorNotice) pinErrorNotice.textContent = "PINコードを入力してください";
+    return;
+  }
+
+  const payload = decryptPayloadWithPin(pendingEncryptedHash, pin);
+  if (!payload || !payload.e || !payload.t) {
+    if (pinErrorNotice) pinErrorNotice.textContent = "⚠️ PINコードが正しくないか、データが破損しています";
+    return;
+  }
+
+  localStorage.setItem("cfEndpoint", payload.e);
+  localStorage.setItem("cfToken", payload.t);
+  if (payload.d) {
+    localStorage.setItem("cfDirectDomain", payload.d);
+  } else {
+    localStorage.removeItem("cfDirectDomain");
+  }
+
+  if (cfEndpoint) cfEndpoint.value = payload.e;
+  if (cfToken) cfToken.value = payload.t;
+  if (cfDirectDomain) cfDirectDomain.value = payload.d || "";
+
+  updateCfStatus();
+  render();
+
+  // URL から #enc=... を即座に消去
+  try {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  } catch (e) {}
+
+  if (pinModal) pinModal.style.display = "none";
+  alert("🎉 PIN認証に成功しました！Cloudflare 接続設定を完全に復元・保存いたしました");
+});
+
+cancelPinButton?.addEventListener("click", () => {
+  if (pinModal) pinModal.style.display = "none";
+});
+
+pinInput?.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    submitPinButton?.click();
+  }
+});
+
+const closePinDisplayModalButton = document.querySelector("#closePinDisplayModalButton");
+if (closePinDisplayModalButton) {
+  closePinDisplayModalButton.addEventListener("click", () => {
+    const pinDisplayModal = document.querySelector("#pinDisplayModal");
+    if (pinDisplayModal) pinDisplayModal.style.display = "none";
+  });
+}
+
 render();
+
