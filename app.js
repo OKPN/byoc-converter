@@ -1598,15 +1598,26 @@ function renderUrlPalette() {
     btn.title = file.key;
     
     const ext = file.key ? file.key.split('.').pop().toLowerCase() : "";
-    if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+    if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
       const img = document.createElement("img");
       img.src = file.url;
       img.alt = file.key;
       img.loading = "lazy";
       btn.append(img);
+    } else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) {
+      const video = document.createElement("video");
+      video.src = `${file.url}#t=0.5`;
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+      video.style.width = "100%";
+      video.style.height = "100%";
+      video.style.objectFit = "cover";
+      video.style.pointerEvents = "none";
+      btn.append(video);
     } else {
       btn.className += " format-badge";
-      btn.textContent = ext.toUpperCase();
+      btn.textContent = ext.toUpperCase() || "FILE";
     }
     
     btn.addEventListener("click", () => {
