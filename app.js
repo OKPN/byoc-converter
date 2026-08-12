@@ -1519,7 +1519,9 @@ async function fetchAndRenderR2Files() {
 
       const ext = file.filename ? file.filename.split('.').pop().toLowerCase() : "";
       let thumbHtml = "";
-      if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
+      if (file.hasPassword) {
+        thumbHtml = `<div class="thumb format-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 22px; display: flex; align-items: center; justify-content: center;" title="パスワード保護">🔒</div>`;
+      } else if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
         thumbHtml = `<img class="thumb" alt="" src="${escapeHtml(file.url)}" loading="lazy">`;
       } else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) {
         thumbHtml = `<video class="thumb" src="${escapeHtml(file.url)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
