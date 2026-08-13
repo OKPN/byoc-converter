@@ -167,6 +167,7 @@ const statusText = document.querySelector("#statusText");
 // ☁️ Cloudflare 情報フォーム要素
 const cfEndpoint = document.querySelector("#cfEndpoint");
 const cfToken = document.querySelector("#cfToken");
+const cfUploadToken = document.querySelector("#cfUploadToken");
 const cfDirectDomain = document.querySelector("#cfDirectDomain");
 const cfStatus = document.querySelector("#cfStatus");
 const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
@@ -324,6 +325,7 @@ function getRequestHeaders(extraHeaders = {}) {
 function updateCfStatus() {
   const endpoint = (localStorage.getItem("cfEndpoint") || "").trim();
   const token    = (localStorage.getItem("cfToken") || "").trim();
+  const uploadToken = (localStorage.getItem("cfUploadToken") || cfUploadToken?.value || "").trim();
   const isConfigured = endpoint !== "" && token !== "";
 
   if (cfStatus) {
@@ -332,6 +334,11 @@ function updateCfStatus() {
     } else {
       cfStatus.innerHTML = `<span style="color: var(--danger);">⚠️ Worker URL と API トークンを入力して保存してください</span>`;
     }
+  }
+
+  const dedicatedAccordion = document.querySelector("#dedicatedUploadAccordion");
+  if (dedicatedAccordion) {
+    dedicatedAccordion.style.display = (isConfigured && uploadToken) ? "block" : "none";
   }
 
   const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
@@ -351,12 +358,14 @@ function updateCfStatus() {
 
 function loadSettings() {
   // Cloudflare 情報を localStorage から復元
-  const savedEndpoint = localStorage.getItem("cfEndpoint") || "";
-  const savedToken    = localStorage.getItem("cfToken")    || "";
-  const savedDirect   = localStorage.getItem("cfDirectDomain") || "";
+  const savedEndpoint    = localStorage.getItem("cfEndpoint") || "";
+  const savedToken       = localStorage.getItem("cfToken")    || "";
+  const savedUploadToken = localStorage.getItem("cfUploadToken") || "";
+  const savedDirect      = localStorage.getItem("cfDirectDomain") || "";
 
-  if (cfEndpoint) cfEndpoint.value = savedEndpoint;
-  if (cfToken)    cfToken.value    = savedToken;
+  if (cfEndpoint)    cfEndpoint.value    = savedEndpoint;
+  if (cfToken)       cfToken.value       = savedToken;
+  if (cfUploadToken) cfUploadToken.value = savedUploadToken;
   if (cfDirectDomain) cfDirectDomain.value = savedDirect;
 
   updateCfStatus();
@@ -546,15 +555,21 @@ if (localStorage.getItem("cfEndpoint") && localStorage.getItem("cfToken")) {
 let cfAutoFetchTimer = null;
 
 const saveCfSettingsAuto = () => {
-  const endpoint = cfEndpoint?.value?.trim() || "";
-  const token    = cfToken?.value?.trim()    || "";
-  const direct   = cfDirectDomain?.value?.trim() || "";
+  const endpoint    = cfEndpoint?.value?.trim() || "";
+  const token       = cfToken?.value?.trim()    || "";
+  const uploadToken = cfUploadToken?.value?.trim() || "";
+  const direct      = cfDirectDomain?.value?.trim() || "";
 
   if (endpoint) {
     localStorage.setItem("cfEndpoint", endpoint);
   }
   if (token) {
     localStorage.setItem("cfToken", token);
+  }
+  if (uploadToken) {
+    localStorage.setItem("cfUploadToken", uploadToken);
+  } else {
+    localStorage.removeItem("cfUploadToken");
   }
   if (direct) {
     localStorage.setItem("cfDirectDomain", direct);
@@ -574,6 +589,7 @@ const saveCfSettingsAuto = () => {
 
 cfEndpoint?.addEventListener("input", saveCfSettingsAuto);
 cfToken?.addEventListener("input", saveCfSettingsAuto);
+cfUploadToken?.addEventListener("input", saveCfSettingsAuto);
 cfDirectDomain?.addEventListener("input", saveCfSettingsAuto);
 
 cfSaveButton?.addEventListener("click", () => {
@@ -593,10 +609,12 @@ cfSaveButton?.addEventListener("click", () => {
 cfClearButton?.addEventListener("click", () => {
   localStorage.removeItem("cfEndpoint");
   localStorage.removeItem("cfToken");
+  localStorage.removeItem("cfUploadToken");
   localStorage.removeItem("cfDirectDomain");
 
-  if (cfEndpoint) cfEndpoint.value = "";
-  if (cfToken)    cfToken.value    = "";
+  if (cfEndpoint)    cfEndpoint.value    = "";
+  if (cfToken)       cfToken.value       = "";
+  if (cfUploadToken) cfUploadToken.value = "";
   if (cfDirectDomain) cfDirectDomain.value = "";
 
   updateCfStatus();
@@ -620,13 +638,16 @@ copyUploadApiUrlBtn?.addEventListener("click", () => {
 
 copyCurlCmdBtn?.addEventListener("click", () => {
   const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
-  const token = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  const uploadToken = (localStorage.getItem("cfUploadToken") || cfUploadToken?.value || "").trim();
+  const adminToken = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  const token = uploadToken || adminToken || "YOUR_UPLOAD_TOKEN";
+
   if (!dedicatedUploadInput || !dedicatedUploadInput.value) {
     alert("⚠️ Worker エンドポイント URL を設定してください。");
     return;
   }
   const curlCmd = `curl -X POST "${dedicatedUploadInput.value}" \\
-  -H "Authorization: Bearer ${token || "YOUR_UPLOAD_TOKEN"}" \\
+  -H "Authorization: Bearer ${token}" \\
   -F "file=@/path/to/image.jpg"`;
   copyToClipboard(curlCmd);
   alert("💻 curl コマンド例をコピーしました！");

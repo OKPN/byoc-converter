@@ -132,6 +132,11 @@
                     <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
                   </label>
                   <label class="field">
+                    <span><span>投稿専用トークン (UPLOAD_TOKEN)</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
+                    <input id="cfUploadToken" type="password" placeholder="your-upload-token" spellcheck="false" autocomplete="off">
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;">専ブラ等で投稿権限のみを許可する場合に入力。保存すると投稿用API案内が表示されます。</span>
+                  </label>
+                  <label class="field">
                     <span><span data-i18n="cfDomainLabel">直リンク配信ドメイン</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
                     <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
@@ -148,13 +153,13 @@
                 </div>
               </details>
 
-              <details class="cf-accordion" style="margin-top: 8px;">
+              <details id="dedicatedUploadAccordion" class="cf-accordion" style="display: none; margin-top: 8px;">
                 <summary style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); padding: 6px 0; user-select: none;">
                   📡 専ブラ・投稿用 API
                 </summary>
                 <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
                   <span style="font-size: 11px; color: var(--muted); line-height: 1.5;">
-                    5ch専ブラや外部スクリプトから直接画像を投稿してURLを取得できる軽量APIです。<code>UPLOAD_TOKEN</code>（任意設定）を使用すれば、投稿権限のみを付与し、ファイル一覧の閲覧・削除は遮断（401）される安全な運用が可能です。
+                    5ch専ブラや外部スクリプトから直接画像を投稿してURLを取得できる軽量APIです。<code>UPLOAD_TOKEN</code> により投稿権限のみが付与され、ファイル一覧の閲覧・削除は遮断（401）される安全な運用が可能です。
                   </span>
                   <label class="field">
                     <span>投稿API エンドポイント URL</span>
