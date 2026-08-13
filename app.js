@@ -1069,7 +1069,6 @@ function createActionHtml(result) {
       <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly>
       <button type="button" class="ghost-button copy-button">${escapeHtml(dict.copyUrl)}</button>
       ${downloadBtn}
-      <button type="button" class="ghost-button delete-button danger-button" aria-label="削除">&times;</button>
     `;
   }
   return `
