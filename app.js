@@ -336,11 +336,6 @@ function updateCfStatus() {
     }
   }
 
-  const dedicatedAccordion = document.querySelector("#dedicatedUploadAccordion");
-  if (dedicatedAccordion) {
-    dedicatedAccordion.style.display = (isConfigured && uploadToken) ? "block" : "none";
-  }
-
   const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
   if (dedicatedUploadInput) {
     const uploadApiUrl = endpoint ? `${endpoint.replace(/\/$/, "")}/api/upload` : "";
