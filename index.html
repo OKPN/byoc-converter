@@ -148,6 +148,25 @@
                 </div>
               </details>
 
+              <details class="cf-accordion" style="margin-top: 8px;">
+                <summary style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); padding: 6px 0; user-select: none;">
+                  📡 専ブラ・投稿用 API
+                </summary>
+                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                  <span style="font-size: 11px; color: var(--muted); line-height: 1.5;">
+                    5ch専ブラや外部スクリプトから直接画像を投稿してURLを取得できる軽量APIです。<code>UPLOAD_TOKEN</code>（任意設定）を使用すれば、投稿権限のみを付与し、ファイル一覧の閲覧・削除は遮断（401）される安全な運用が可能です。
+                  </span>
+                  <label class="field">
+                    <span>投稿API エンドポイント URL</span>
+                    <input id="dedicatedUploadApiUrl" type="text" readonly style="font-family: monospace; font-size: 11px; background: #111215;" value="">
+                  </label>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px;">📋 URLをコピー</button>
+                    <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px;">💻 curlコマンド例をコピー</button>
+                  </div>
+                </div>
+              </details>
+
               <div class="metadata-warning" style="border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
                 <span class="warning-icon" style="color: #818cf8;">ℹ️</span>
                 <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #c7d2fe; font-size: 11px; line-height: 1.5; margin: 0;">

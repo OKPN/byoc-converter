@@ -334,6 +334,12 @@ function updateCfStatus() {
     }
   }
 
+  const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
+  if (dedicatedUploadInput) {
+    const uploadApiUrl = endpoint ? `${endpoint.replace(/\/$/, "")}/api/upload` : "";
+    dedicatedUploadInput.value = uploadApiUrl;
+  }
+
   const uploadButtons = [convertUploadButton, uploadRenameButton, uploadOriginalButton];
   if (!isConfigured) {
     uploadButtons.forEach(btn => { if (btn) btn.disabled = true; });
@@ -597,6 +603,33 @@ cfClearButton?.addEventListener("click", () => {
   render();
   fetchAndRenderR2Files(); // クリア時も表示を更新
   if (cfSettingsAccordion) cfSettingsAccordion.open = true;
+});
+
+const copyUploadApiUrlBtn = document.querySelector("#copyUploadApiUrlBtn");
+const copyCurlCmdBtn = document.querySelector("#copyCurlCmdBtn");
+
+copyUploadApiUrlBtn?.addEventListener("click", () => {
+  const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
+  if (!dedicatedUploadInput || !dedicatedUploadInput.value) {
+    alert("⚠️ Worker エンドポイント URL を設定してください。");
+    return;
+  }
+  copyToClipboard(dedicatedUploadInput.value);
+  alert("📋 投稿 API エンドポイント URL をコピーしました！");
+});
+
+copyCurlCmdBtn?.addEventListener("click", () => {
+  const dedicatedUploadInput = document.querySelector("#dedicatedUploadApiUrl");
+  const token = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  if (!dedicatedUploadInput || !dedicatedUploadInput.value) {
+    alert("⚠️ Worker エンドポイント URL を設定してください。");
+    return;
+  }
+  const curlCmd = `curl -X POST "${dedicatedUploadInput.value}" \\
+  -H "Authorization: Bearer ${token || "YOUR_UPLOAD_TOKEN"}" \\
+  -F "file=@/path/to/image.jpg"`;
+  copyToClipboard(curlCmd);
+  alert("💻 curl コマンド例をコピーしました！");
 });
 
 // --- 📱 可視光スキャン（QRコード）同期ハンドラ ---
