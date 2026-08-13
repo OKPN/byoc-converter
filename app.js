@@ -1611,7 +1611,8 @@ async function fetchAndRenderR2Files() {
     updateSelectedR2ActionButtonsState();
   } catch (error) {
     console.error("Fetch temp files UI error:", error);
-    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">${escapeHtml(dict.statusError)}: ${escapeHtml(error.message)}</span>`;
+    const errText = error.message || "一覧の取得に失敗しました。APIトークンを確認してください。";
+    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">${escapeHtml(errText)}</span>`;
     updateSelectedR2ActionButtonsState();
   }
 }
