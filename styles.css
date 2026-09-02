@@ -553,9 +553,10 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
-  .file-item,
-  .result-item {
-    grid-template-columns: 52px minmax(0, 1fr) auto;
+  .file-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .output-actions {
@@ -569,6 +570,68 @@ input[type="range"] {
   .thumb {
     width: 52px;
     height: 52px;
+  }
+}
+
+/* スマホ表示でのギャラリー・一時共有カードの最適化 */
+@media (max-width: 680px) {
+  .result-item {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 12px 14px !important;
+  }
+
+  .result-item .thumb-link {
+    flex-shrink: 0;
+  }
+
+  .result-item .item-info-container,
+  .result-item > div:not(.result-actions) {
+    flex: 1 1 calc(100% - 74px) !important;
+    min-width: 0 !important;
+  }
+
+  .result-item .result-actions {
+    width: 100% !important;
+    margin-top: 6px !important;
+    padding-top: 8px !important;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08) !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) !important;
+    gap: 8px !important;
+    margin-left: 0 !important;
+  }
+
+  .result-item .result-actions .ghost-button,
+  .result-item .result-actions a.ghost-button {
+    width: 100% !important;
+    min-height: 36px !important;
+    padding: 0 8px !important;
+    font-size: 11.5px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Civitai ギャラリーヘッダーのスマホ最適化 */
+  #civitaiPanel .panel-heading {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  #civitaiPanel .panel-heading > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #civitaiPanel .panel-heading > div > div {
+    flex: 1 1 140px !important;
   }
 }
 
