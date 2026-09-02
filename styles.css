@@ -802,13 +802,27 @@ input[type="range"] {
   }
 
   /* スマホでのボタンをタップしやすく均等幅に並べる */
-  .result-actions .ghost-button {
+  .result-actions .ghost-button,
+  .result-actions a.ghost-button {
     flex: 1;
-    min-width: 80px;
+    min-width: 100px;
     justify-content: center;
     text-align: center;
     padding: 8px 10px;
     font-size: 12px;
+    box-sizing: border-box;
+  }
+
+  /* Civitai ギャラリーヘッダーのスマホ対応 */
+  #civitaiPanel .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  #civitaiPanel .panel-heading > div {
+    width: 100%;
+    justify-content: space-between;
   }
 
   /* R2ストレージパネルのヘッダーのスマホ縦書き・崩れ対策 */

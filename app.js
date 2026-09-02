@@ -425,7 +425,7 @@ async function fetchAndRenderCivitaiGallery() {
         <a href="${escapeHtml(directUrl)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="直リンクを表示">
           ${thumbHtml}
         </a>
-        <div style="flex: 1; min-width: 0;">
+        <div class="item-info-container" style="flex: 1; min-width: 0;">
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; font-size: 12px; font-family: monospace;">ID: ${escapeHtml(String(item.id))}</span>
             <span class="format-badge" style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${isVideo ? "🎬 VIDEO" : "🖼️ IMAGE"}</span>
@@ -438,7 +438,7 @@ async function fetchAndRenderCivitaiGallery() {
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <button type="button" class="ghost-button civitai-copy-btn" data-url="${escapeHtml(directUrl)}">${escapeHtml(dict.copyUrl || "URLコピー")}</button>
-          <a href="${escapeHtml(civitaiPostPageUrl)}" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);" title="Civitai で投稿の編集・削除を行う">🗑️ 削除/確認 ↗</a>
+          <a href="${escapeHtml(civitaiPostPageUrl)}" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); display: inline-flex; align-items: center; justify-content: center;" title="Civitai で投稿の編集・削除を行う">🗑️ 削除/確認 ↗</a>
         </div>
       `;
 
