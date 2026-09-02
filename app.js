@@ -1,15 +1,22 @@
 import QRCode from "qrcode";
 import encodeJxl, { init as initJxl } from "@jsquash/jxl/encode.js";
 import jxlEncoder from "@jsquash/jxl/codec/enc/jxl_enc.js";
+import jxlWasmUrl from "@jsquash/jxl/codec/enc/jxl_enc.wasm?url";
 
 let jxlInitialized = false;
 async function ensureJxl() {
   if (!jxlInitialized) {
     try {
-      await initJxl(jxlEncoder);
+      await initJxl(jxlEncoder, {
+        locateFile: (path) => {
+          if (path.endsWith(".wasm")) return jxlWasmUrl;
+          return path;
+        },
+      });
       jxlInitialized = true;
     } catch (e) {
       console.error("Failed to init JXL encoder:", e);
+      throw e;
     }
   }
 }
