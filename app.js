@@ -1578,6 +1578,7 @@ async function convertImage(file, index = 0) {
   };
 
   let finalBlob = null;
+  let previewSrc = "";
 
   try {
     const image = await loadImage(file);
@@ -1587,8 +1588,6 @@ async function convertImage(file, index = 0) {
 
     const context = canvas.getContext("2d", { alpha: true });
     context.drawImage(image, 0, 0);
-
-    let previewSrc = "";
 
     if (options.mimeType === "image/jxl") {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
