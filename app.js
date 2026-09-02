@@ -1077,13 +1077,24 @@ function updateRenamePreview() {
   const previewText = document.querySelector("#renamePreviewText");
   if (!previewText) return;
 
+  const firstFile = state.files[0];
+  const firstExt = firstFile ? (firstFile.name.split('.').pop() || "") : "";
+  const isFirstImage = firstFile
+    ? (firstFile.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(firstExt.toLowerCase()))
+    : true;
+
   const isRenameOn = enableRenameCheck?.checked ?? true;
   const isConvertOn = enableConvertCheck?.checked ?? true;
-  const ext = isConvertOn ? (extensions[formatSelect?.value || "image/webp"] || "webp") : "ext";
-  const dummyName = state.files[0] ? state.files[0].name.replace(/\.[^.]+$/, "") : "sample";
+
+  // 画像以外（MP3等）なら変換設定に関わらず元拡張子を維持
+  const ext = (isConvertOn && isFirstImage)
+    ? (extensions[formatSelect?.value || "image/webp"] || "webp")
+    : (firstExt || "ext");
+
+  const dummyName = firstFile ? firstFile.name.replace(/\.[^.]+$/, "") : "sample";
 
   if (!isRenameOn) {
-    previewText.textContent = isConvertOn ? `${dummyName}.${ext}` : "元ファイル名のまま";
+    previewText.textContent = `${dummyName}.${ext}`;
     return;
   }
 
@@ -1386,8 +1397,13 @@ async function runConversion() {
 }
 
 async function convertImage(file, index = 0) {
+  const dotIndex = file.name.lastIndexOf(".");
+  const fileExt = dotIndex > 0 ? file.name.slice(dotIndex + 1).toLowerCase() : "";
+  const isImageMime = file.type && file.type.startsWith("image/");
+  const isImageExt = ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp", "jxl"].includes(fileExt);
+  const isImage = isImageMime || isImageExt;
+
   const isConvertOn = enableConvertCheck?.checked ?? true;
-  const isImage = file.type.startsWith("image/");
 
   if (!isImage || !isConvertOn) {
     const url = URL.createObjectURL(file);
@@ -2282,7 +2298,8 @@ function createOutputName(originalName, mimeType, index = 0) {
     safeBase = safeBase.replace(/[\\/:*?"<>|]/g, "-");
   }
 
-  const ext = (isConvertOn && mimeType && extensions[mimeType])
+  const isImageMime = mimeType && (mimeType in extensions);
+  const ext = (isConvertOn && isImageMime)
     ? extensions[mimeType]
     : (originalExt || "bin");
 
