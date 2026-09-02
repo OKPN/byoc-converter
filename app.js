@@ -277,6 +277,7 @@ const clearComposerButton = document.querySelector("#clearComposerButton");
 const copyComposerTextButton = document.querySelector("#copyComposerTextButton");
 
 let paletteFiles = []; // パレットに表示するKVファイル一覧をキャッシュ
+let civitaiPaletteFiles = []; // パレットに表示するCivitaiファイル一覧をキャッシュ
 
 const extensions = {
   "image/jpeg": "jpg",
@@ -399,6 +400,20 @@ async function fetchAndRenderCivitaiGallery() {
     }
     const data = await res.json();
     const items = data.items || [];
+
+    civitaiPaletteFiles = items.map(item => {
+      const isVideo = item.type === "video";
+      const directUrl = item.url;
+      const previewSrc = isVideo ? directUrl : (directUrl.includes("/original=true/") ? directUrl.replace("/original=true/", "/width=450/") : directUrl);
+      return {
+        key: `Civitai ID:${item.id}`,
+        url: directUrl,
+        previewUrl: previewSrc,
+        isVideo,
+        isCivitai: true,
+      };
+    });
+    renderUrlPalette();
 
     civitaiGalleryList.innerHTML = "";
     if (items.length === 0) {
@@ -1879,26 +1894,31 @@ function renderUrlPalette() {
   if (!paletteList) return;
   paletteList.innerHTML = "";
   
-  if (paletteFiles.length === 0) {
-    paletteList.innerHTML = `<span style="font-size: 11px; color: var(--muted); padding: 8px;">アップロード済みのファイルがありません。</span>`;
+  const allPaletteFiles = [...paletteFiles, ...civitaiPaletteFiles];
+
+  if (allPaletteFiles.length === 0) {
+    paletteList.innerHTML = `<span style="font-size: 11px; color: var(--muted); padding: 8px;">一時共有またはCivitaiのメディアがありません。</span>`;
     return;
   }
   
-  paletteFiles.forEach(file => {
+  allPaletteFiles.forEach(file => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "palette-chip";
+    btn.className = file.isCivitai ? "palette-chip civitai-palette-chip" : "palette-chip";
     btn.dataset.url = file.url;
-    btn.title = file.key;
+    btn.title = `${file.key} (クリックでURL挿入)`;
+    btn.style.position = "relative";
     
     const ext = file.key ? file.key.split('.').pop().toLowerCase() : "";
-    if (["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
+    const isVideo = file.isVideo || ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
+
+    if (file.previewUrl || ["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
       const img = document.createElement("img");
-      img.src = file.url;
+      img.src = file.previewUrl || file.url;
       img.alt = file.key;
       img.loading = "lazy";
       btn.append(img);
-    } else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) {
+    } else if (isVideo) {
       const video = document.createElement("video");
       video.src = `${file.url}#t=0.5`;
       video.preload = "metadata";
@@ -1913,9 +1933,33 @@ function renderUrlPalette() {
       btn.className += " format-badge";
       btn.textContent = ext.toUpperCase() || "FILE";
     }
+
+    if (file.isCivitai) {
+      const badge = document.createElement("span");
+      badge.className = "palette-chip-badge";
+      badge.textContent = "🎨";
+      btn.append(badge);
+    }
     
-    btn.addEventListener("click", () => {
-      insertAtCursor(file.url);
+    btn.addEventListener("click", async () => {
+      let finalInsertUrl = file.url;
+      // Civitai の URL の場合、真の blobs-b2 直リンク URL を取得可能なら自動解決
+      if (file.isCivitai) {
+        const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim().replace(/\/$/, "");
+        if (endpoint) {
+          try {
+            const resolveApi = `${endpoint}/api/resolve-url?url=${encodeURIComponent(file.url)}`;
+            const res = await fetch(resolveApi);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.url) finalInsertUrl = data.url;
+            }
+          } catch (e) {
+            console.warn("Resolve URL fallback:", e);
+          }
+        }
+      }
+      insertAtCursor(finalInsertUrl);
     });
     
     paletteList.append(btn);

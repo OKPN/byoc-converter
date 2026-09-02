@@ -1153,5 +1153,57 @@ input[type="range"] {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* URL Inserter Palette Chips */
+.palette-chip {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #11131a;
+  overflow: hidden;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.palette-chip:hover {
+  transform: translateY(-2px) scale(1.05);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(255, 122, 26, 0.3);
+}
+
+.palette-chip img,
+.palette-chip video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.civitai-palette-chip {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.civitai-palette-chip:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+}
+
+.palette-chip-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 9px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1;
+  pointer-events: none;
+}
+
 
 
