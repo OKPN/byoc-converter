@@ -435,7 +435,7 @@ async function fetchAndRenderCivitaiGallery() {
           </div>
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <button type="button" class="ghost-button civitai-copy-btn" data-url="${escapeHtml(directUrl)}">📋 永久直リンクコピー</button>
+          <button type="button" class="ghost-button civitai-copy-btn" data-url="${escapeHtml(directUrl)}">${escapeHtml(dict.copyUrl || "URLコピー")}</button>
           <a href="${escapeHtml(civitaiPostPageUrl)}" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);" title="Civitai で投稿の編集・削除を行う">🗑️ 削除/確認 ↗</a>
         </div>
       `;
