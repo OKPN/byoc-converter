@@ -280,13 +280,8 @@ langSelect?.addEventListener("change", (e) => {
 });
 
 // アクションボタン
-const convertButton = document.querySelector("#convertButton");
 const convertUploadButton = document.querySelector("#convertUploadButton");
-const uploadRenameButton = document.querySelector("#uploadRenameButton");
-const uploadOriginalButton = document.querySelector("#uploadOriginalButton");
 const convertDownloadButton = document.querySelector("#convertDownloadButton");
-const zipButton = document.querySelector("#zipButton");
-const uploadAllButton = document.querySelector("#uploadAllButton");
 const clearButton = document.querySelector("#clearButton");
 
 // 設定要素
@@ -411,9 +406,8 @@ function updateCfStatus() {
     dedicatedUploadInput.value = uploadApiUrl;
   }
 
-  const uploadButtons = [convertUploadButton, uploadRenameButton, uploadOriginalButton];
-  if (!isConfigured) {
-    uploadButtons.forEach(btn => { if (btn) btn.disabled = true; });
+  if (!isConfigured && convertUploadButton) {
+    convertUploadButton.disabled = true;
   }
   return isConfigured;
 }
@@ -1139,10 +1133,8 @@ function setUiLock(locked) {
   if (fileInput) fileInput.disabled = locked;
   if (dropzone) dropzone.classList.toggle("is-disabled", locked);
   if (clearButton) clearButton.disabled = locked;
-  if (convertButton) convertButton.disabled = locked || !hasFiles || !canProcessLocal;
   if (convertDownloadButton) convertDownloadButton.disabled = locked || !hasFiles || !canProcessLocal;
   if (convertUploadButton) convertUploadButton.disabled = locked || !hasFiles || !cfOk;
-  if (locked && uploadAllButton) uploadAllButton.disabled = true;
 }
 
 function updateRenamePreview() {
@@ -1717,33 +1709,43 @@ async function uploadFile(file, customFilename = null) {
 
 // ボタンイベントリスナー群
 
-convertButton?.addEventListener("click", async () => {
-  await runConversion();
-});
-
 convertUploadButton?.addEventListener("click", async () => {
   if (!state.files.length) return;
   const success = await runConversion();
   if (!success) return;
 
-  const targets = state.results.filter(r => r && !r.isUploaded && !r.isUploading);
-  if (targets.length === 0) return;
+  const allTargets = state.results.filter(r => r && !r.isUploaded && !r.isUploading);
+  if (allTargets.length === 0) return;
+
+  // 25MB以下のファイルのみをアップロード対象とする
+  const validTargets = allTargets.filter(r => r.size <= KV_MAX_SIZE);
+  const skippedCount = allTargets.length - validTargets.length;
+
+  if (validTargets.length === 0) {
+    alert("⚠️ すべてのファイルが25MBを超えているため、Cloudflare KVへアップロードできません。");
+    return;
+  }
 
   setUiLock(true);
   if (statusText) {
     statusText.className = "saving";
-    statusText.textContent = `アップロード中 (0/${targets.length})`;
+    statusText.textContent = `アップロード中 (0/${validTargets.length})`;
   }
   if (progressBar) progressBar.value = 0;
 
   try {
-    for (let i = 0; i < targets.length; i++) {
-      const result = targets[i];
-      if (statusText) statusText.textContent = `アップロード中 (${i + 1}/${targets.length})`;
+    for (let i = 0; i < validTargets.length; i++) {
+      const result = validTargets[i];
+      if (statusText) statusText.textContent = `アップロード中 (${i + 1}/${validTargets.length})`;
       await uploadImage(result);
-      if (progressBar) progressBar.value = Math.round(((i + 1) / targets.length) * 100);
+      if (progressBar) progressBar.value = Math.round(((i + 1) / validTargets.length) * 100);
     }
-    if (statusText) statusText.textContent = "一括アップロード完了";
+    if (statusText) {
+      statusText.textContent = skippedCount > 0
+        ? `アップロード完了 (${skippedCount}件スキップ: 25MB超)`
+        : "一括アップロード完了";
+      statusText.className = "";
+    }
   } catch (error) {
     console.error("Upload failed:", error);
     if (statusText) {
@@ -1752,7 +1754,6 @@ convertUploadButton?.addEventListener("click", async () => {
     }
   } finally {
     setUiLock(false);
-    updateUploadAllButtonState();
     await fetchAndRenderR2Files();
   }
 });
@@ -1775,11 +1776,10 @@ convertDownloadButton?.addEventListener("click", async () => {
           data: new Uint8Array(arrayBuffer),
         });
       }
-      const zipBytes = createZip(zipEntries);
-      const zipBlob = new Blob([zipBytes], { type: "application/zip" });
+      const zipBlob = createZip(zipEntries);
       const zipUrl = URL.createObjectURL(zipBlob);
       downloadUrl(zipUrl, "converted-images.zip");
-      setTimeout(() => URL.revokeObjectURL(zipUrl), 1500);
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 2000);
       if (statusText) statusText.textContent = "ZIP一括ダウンロード完了";
     } catch (err) {
       console.error("ZIP creation error:", err);
@@ -1800,157 +1800,6 @@ convertDownloadButton?.addEventListener("click", async () => {
       }
     }
     if (statusText) statusText.textContent = "ダウンロード完了";
-  }
-});
-
-uploadOriginalButton?.addEventListener("click", async () => {
-  if (!state.files.length) return;
-  setUiLock(true);
-  if (statusText) {
-    statusText.textContent = `アップロード中 (0/${state.files.length})`;
-    statusText.className = "saving";
-  }
-  if (progressBar) progressBar.value = 0;
-
-  try {
-    let completedCount = 0;
-    for (const file of state.files) {
-      await uploadFile(file);
-      completedCount++;
-      if (statusText) statusText.textContent = `アップロード中 (${completedCount}/${state.files.length})`;
-      if (progressBar) progressBar.value = Math.round((completedCount / state.files.length) * 100);
-    }
-    if (statusText) statusText.textContent = "そのままアップロード完了";
-    state.files = [];
-    render();
-    await fetchAndRenderR2Files();
-  } catch (error) {
-    console.error(error);
-    if (statusText) {
-      statusText.textContent = error.message;
-      statusText.className = "error";
-    }
-  } finally {
-    setUiLock(false);
-  }
-});
-
-uploadRenameButton?.addEventListener("click", async () => {
-  if (!state.files.length) return;
-  setUiLock(true);
-  if (statusText) {
-    statusText.textContent = `アップロード中 (0/${state.files.length})`;
-    statusText.className = "saving";
-  }
-  if (progressBar) progressBar.value = 0;
-
-  try {
-    let completedCount = 0;
-    for (let index = 0; index < state.files.length; index++) {
-      const file = state.files[index];
-      const newFilename = createOutputName(file.name, null, index);
-      await uploadFile(file, newFilename);
-      completedCount++;
-      if (statusText) statusText.textContent = `アップロード中 (${completedCount}/${state.files.length})`;
-      if (progressBar) progressBar.value = Math.round((completedCount / state.files.length) * 100);
-    }
-    if (statusText) statusText.textContent = "リネームアップロード完了";
-    state.files = [];
-    render();
-    await fetchAndRenderR2Files();
-  } catch (error) {
-    console.error(error);
-    if (statusText) {
-      statusText.textContent = error.message;
-      statusText.className = "error";
-    }
-  } finally {
-    setUiLock(false);
-  }
-});
-
-function updateZipButtonState() {
-  if (zipButton) {
-    const unuploaded = state.results ? state.results.filter(r => r && !r.isUploaded) : [];
-    zipButton.disabled = unuploaded.length === 0;
-  }
-}
-
-function updateUploadAllButtonState() {
-  const cfOk = updateCfStatus();
-  const unuploaded = state.results ? state.results.filter(r => r && !r.isUploaded && !r.isUploading) : [];
-  if (uploadAllButton) {
-    uploadAllButton.disabled = unuploaded.length === 0 || !cfOk;
-  }
-}
-
-uploadAllButton?.addEventListener("click", async () => {
-  const targets = state.results ? state.results.filter(r => r && !r.isUploaded && !r.isUploading) : [];
-  if (targets.length === 0) return;
-
-  const validTargets = targets.filter(r => r.size <= KV_MAX_SIZE);
-  if (validTargets.length === 0) return;
-
-  setUiLock(true);
-  if (statusText) {
-    statusText.className = "saving";
-    statusText.textContent = `一括アップロード中 (0/${validTargets.length})`;
-  }
-  if (progressBar) progressBar.value = 0;
-
-  try {
-    for (let i = 0; i < validTargets.length; i++) {
-      const result = validTargets[i];
-      if (statusText) statusText.textContent = `一括アップロード中 (${i + 1}/${validTargets.length})`;
-      await uploadImage(result);
-      if (progressBar) progressBar.value = Math.round(((i + 1) / validTargets.length) * 100);
-    }
-    if (statusText) statusText.textContent = "一括アップロード完了";
-  } catch (error) {
-    console.error(error);
-    if (statusText) {
-      statusText.textContent = `一括アップロード失敗: ${error.message}`;
-      statusText.className = "error";
-    }
-  } finally {
-    setUiLock(false);
-    updateUploadAllButtonState();
-    await fetchAndRenderR2Files();
-  }
-});
-
-zipButton?.addEventListener("click", async () => {
-  if (!zipButton || !state.results.length) return;
-  zipButton.disabled = true;
-  if (statusText) {
-    statusText.textContent = "ZIP作成中...";
-    statusText.className = "saving";
-  }
-
-  try {
-    const entries = [];
-    for (const result of state.results) {
-      if (result && result.blob) {
-        entries.push({
-          name: result.name,
-          data: new Uint8Array(await result.blob.arrayBuffer()),
-        });
-      }
-    }
-
-    const zipBlob = createZip(entries);
-    const url = URL.createObjectURL(zipBlob);
-    downloadUrl(url, "converted-images.zip");
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    if (statusText) statusText.textContent = "ZIP一括ダウンロード完了";
-  } catch (error) {
-    console.error("Zip error:", error);
-    if (statusText) {
-      statusText.textContent = "ZIP失敗";
-      statusText.className = "error";
-    }
-  } finally {
-    updateZipButtonState();
   }
 });
 
