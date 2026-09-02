@@ -74,7 +74,7 @@
               <div class="toggle-control-group">
                 <label class="check-label-row">
                   <input type="checkbox" id="enableConvertCheck" checked>
-                  <span class="section-label-text">画像を変換する</span>
+                  <span class="section-label-text" data-i18n="enableConvert">画像を変換する</span>
                 </label>
                 
                 <div id="convertSettingsArea" class="toggle-sub-area">
@@ -90,7 +90,7 @@
                   <label class="field" style="margin-top: 6px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       <span data-i18n="quality">品質</span>
-                      <span style="font-size: 11px; color: var(--muted);">推奨: 80〜90</span>
+                      <span style="font-size: 11px; color: var(--muted);" data-i18n="qualityRecommend">推奨: 80〜90</span>
                     </div>
                     <div class="range-row">
                       <input id="qualityRange" type="range" min="1" max="100" value="85">
@@ -104,7 +104,7 @@
               <div class="toggle-control-group" style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); padding-top: 10px;">
                 <label class="check-label-row">
                   <input type="checkbox" id="enableRenameCheck" checked>
-                  <span class="section-label-text">ファイル名をリネームする</span>
+                  <span class="section-label-text" data-i18n="enableRename">ファイル名をリネームする</span>
                 </label>
 
                 <div id="renameSettingsArea" class="toggle-sub-area">
@@ -116,7 +116,7 @@
                     
                     <!-- リアルタイムプレビューチップ -->
                     <div class="preview-chip" id="renamePreviewChip">
-                      <span style="color: var(--muted); font-size: 11px;">プレビュー:</span>
+                      <span style="color: var(--muted); font-size: 11px;" data-i18n="previewLabel">プレビュー:</span>
                       <span id="renamePreviewText" style="font-weight: 700; color: #a5b4fc; font-family: monospace;">sample.webp</span>
                     </div>
 
@@ -134,7 +134,7 @@
               <div style="margin-top: 10px; padding-top: 4px;">
                 <label class="check-label-row" style="font-size: 12px;">
                   <input type="checkbox" id="enableZipCheck">
-                  <span style="color: var(--muted); font-size: 12px;">🗜️ ZIP形式でまとめて保存する</span>
+                  <span style="color: var(--muted); font-size: 12px;" data-i18n="enableZip">🗜️ ZIP形式でまとめて保存する</span>
                 </label>
               </div>
 
@@ -148,7 +148,7 @@
 
             <!-- セクション 2: Cloudflare 共有設定 -->
             <div class="settings-section" style="border-top: 1px solid var(--border); padding-top: 16px;">
-              <div class="section-label" style="color: #34d399;">☁️ Cloudflare 共有</div>
+              <div class="section-label" style="color: #34d399;" data-i18n="cfShareSection">☁️ Cloudflare 共有</div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px;">
                 <label class="field">
@@ -162,8 +162,8 @@
                   </select>
                 </label>
                 <label class="field">
-                  <span><span data-i18n="tempPasswordLabel">🔑 閲覧パスワード</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off">
+                  <span><span data-i18n="tempPasswordLabel">🔑 閲覧パスワード</span> <span style="color: var(--muted); font-size: 11px;" data-i18n="optionalText">(任意)</span></span>
+                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" data-i18n="tempPasswordPlaceholder" spellcheck="false" autocomplete="off">
                 </label>
               </div>
 
@@ -210,22 +210,22 @@
 
               <!-- 📡 投稿用 API アコーディオン -->
               <details class="settings-accordion cf-settings-accordion" id="dedicatedUploadAccordion" style="margin-top: 6px;">
-                <summary>📡 投稿用 API (外部スクリプト連携)</summary>
+                <summary data-i18n="uploadApiTitle">📡 投稿用 API (外部スクリプト連携)</summary>
                 <div class="settings-content" style="padding: 12px 0 4px; display: flex; flex-direction: column; gap: 8px;">
-                  <span style="font-size: 11px; color: var(--muted); line-height: 1.4;">
+                  <span style="font-size: 11px; color: var(--muted); line-height: 1.4;" data-i18n="uploadApiDesc">
                     外部アプリやスクリプトから直接画像を投稿してURLを取得できる軽量APIです。
                   </span>
                   <label class="field">
-                    <span style="font-size: 11px;">投稿専用トークン (UPLOAD_TOKEN) <span style="color: var(--muted); font-size: 10px;">(任意)</span></span>
+                    <span><span style="font-size: 11px;" data-i18n="uploadApiToken">投稿専用トークン (UPLOAD_TOKEN)</span> <span style="color: var(--muted); font-size: 10px;" data-i18n="optionalText">(任意)</span></span>
                     <input id="cfUploadToken" type="password" placeholder="your-upload-token" spellcheck="false" autocomplete="off" style="height: 34px; font-size: 11px;">
                   </label>
                   <label class="field">
-                    <span style="font-size: 11px;">投稿API エンドポイント URL</span>
+                    <span style="font-size: 11px;" data-i18n="uploadApiUrl">投稿API エンドポイント URL</span>
                     <input id="dedicatedUploadApiUrl" type="text" readonly style="font-family: monospace; font-size: 11px; background: #111215; height: 32px;" value="">
                   </label>
                   <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;">📋 URLをコピー</button>
-                    <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;">💻 curl例をコピー</button>
+                    <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;" data-i18n="btnCopyUrl">📋 URLをコピー</button>
+                    <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;" data-i18n="btnCopyCurl">💻 curl例をコピー</button>
                   </div>
                 </div>
               </details>
@@ -297,11 +297,11 @@
         <section class="panel" id="civitaiPanel" style="margin-top: 20px;">
           <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <h2 style="font-size: 15px; margin: 0; display: flex; align-items: center; gap: 6px;">
-              <span>🎨 Civitai ギャラリー (クラウド永久保存)</span>
+              <span data-i18n="civitaiGalleryHeading">🎨 Civitai ギャラリー (クラウド永久保存)</span>
             </h2>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); padding: 0 10px; height: 38px; border-radius: 6px; border: 1px solid var(--border); box-sizing: border-box;">
-                <span style="font-size: 11px; color: var(--muted); white-space: nowrap;">👤 ユーザー名:</span>
+                <span style="font-size: 11px; color: var(--muted); white-space: nowrap;" data-i18n="civitaiUsernameLabel">👤 ユーザー名:</span>
                 <input id="civitaiUsername" type="text" placeholder="username" spellcheck="false" autocomplete="off" style="height: 100%; width: 110px; font-size: 12px; border: none; background: transparent; color: var(--text); outline: none; font-weight: 600;">
               </div>
               <button class="ghost-button" id="reloadCivitaiButton" type="button" data-i18n="btnReload">🔄 更新</button>
