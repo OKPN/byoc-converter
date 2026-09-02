@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { encode as encodeJxl } from "@jsquash/jxl";
 
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
@@ -1587,7 +1588,19 @@ async function convertImage(file, index = 0) {
     const context = canvas.getContext("2d", { alpha: true });
     context.drawImage(image, 0, 0);
 
-    finalBlob = await canvasToBlob(canvas, options.mimeType, options.quality);
+    let previewSrc = "";
+
+    if (options.mimeType === "image/jxl") {
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const qualityVal = qualityRange ? Number(qualityRange.value) : 85;
+      const jxlBuffer = await encodeJxl(imageData, { quality: qualityVal });
+      finalBlob = new Blob([jxlBuffer], { type: "image/jxl" });
+      try {
+        previewSrc = canvas.toDataURL("image/webp", 0.7);
+      } catch (e) {}
+    } else {
+      finalBlob = await canvasToBlob(canvas, options.mimeType, options.quality);
+    }
   } catch (err) {
     console.warn("Canvas conversion fallback failed, using original blob:", err);
     finalBlob = file;
@@ -1600,7 +1613,7 @@ async function convertImage(file, index = 0) {
     name: options.name,
     relativePath: file.relativePath || file.name,
     url: finalUrl,
-    previewUrl: finalUrl,
+    previewUrl: previewSrc || finalUrl,
     blob: finalBlob,
     size: finalBlob.size,
     originalSize: file.size,
