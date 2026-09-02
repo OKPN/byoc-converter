@@ -1619,11 +1619,13 @@ async function uploadImage(result) {
     renderUrlPalette();
 
     await fetchAndRenderR2Files();
+    return true;
 
   } catch (error) {
     result.error = error.message;
     alert(`アップロード失敗: ${error.message}`);
     console.error("Upload failed:", error);
+    return false;
   } finally {
     result.isUploading = false;
     renderResults();
