@@ -382,7 +382,7 @@ async function fetchAndRenderCivitaiGallery() {
   const dict = i18nDict[lang] || i18nDict.ja;
 
   if (!username) {
-    civitaiGalleryList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted); text-align: center; display: block;">Civitai ユーザー名（例: OKPN）を入力すると、ここに投稿済みの動画・画像一覧（永久直リンク）が表示されます。</span>`;
+    civitaiGalleryList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted); text-align: center; display: block;">Civitai ユーザー名を入力すると、ここに投稿済みの動画・画像一覧（永久直リンク）が表示されます。</span>`;
     return;
   }
 
