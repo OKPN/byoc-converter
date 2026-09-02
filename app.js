@@ -59,7 +59,8 @@ const i18nDict = {
     btnPinBackup: "🔗 PINバックアップ",
     btnClear: "クリア",
     kvLimitNotice: "ℹ️ Cloudflare KV の仕様上、一時共有は1ファイル最大 <strong style=\"color: #fff;\">25MB</strong> までとなります。<br><span style=\"font-size: 10.5px; color: #818cf8; display: inline-block; margin-top: 2px;\">※ Civitai へのアップロード最大容量は Civitai の規約・仕様に従います。</span>",
-    btnConvertUpload: "🟩 変換してアップロード",
+    btnUpload: "🟩 アップロード",
+    btnConvertUpload: "🟩 アップロード",
     btnUploadRename: "リネームだけしてアップロード",
     btnUploadOriginal: "そのままアップロード",
     btnConvertOnly: "変換だけする",
@@ -152,7 +153,8 @@ const i18nDict = {
     btnPinBackup: "🔗 PIN Backup",
     btnClear: "Clear",
     kvLimitNotice: "ℹ️ Due to Cloudflare KV specifications, temporary sharing is up to <strong style=\"color: #fff;\">25MB per file</strong>.<br><span style=\"font-size: 10.5px; color: #818cf8; display: inline-block; margin-top: 2px;\">* Max upload size for Civitai follows Civitai terms and policies.</span>",
-    btnConvertUpload: "🟩 Convert & Upload",
+    btnUpload: "🟩 Upload",
+    btnConvertUpload: "🟩 Upload",
     btnUploadRename: "Rename & Upload Only",
     btnUploadOriginal: "Upload As-Is",
     btnConvertOnly: "Convert Only",
@@ -1209,7 +1211,7 @@ function render() {
   const isRenameOn = enableRenameCheck?.checked ?? true;
   const canProcessLocal = isConvertOn || isRenameOn;
 
-  if (convertDownloadButton) convertDownloadButton.disabled = !hasFiles || !canProcessLocal;
+  if (convertDownloadButton) convertDownloadButton.disabled = !hasFiles;
   if (convertUploadButton) convertUploadButton.disabled = !hasFiles || !cfOk;
 
   if (dropzone) {
@@ -1516,7 +1518,6 @@ fileList?.addEventListener("click", async (event) => {
 
 async function runConversion() {
   if (!state.files.length) return false;
-  if (zipButton) zipButton.disabled = true;
   if (progressBar) progressBar.value = 0;
   if (statusText) {
     statusText.textContent = "変換中...";
@@ -1530,7 +1531,7 @@ async function runConversion() {
     }
   });
   state.results = [];
-  renderResults();
+  render();
   setUiLock(true);
 
   try {
@@ -1541,7 +1542,7 @@ async function runConversion() {
         state.results[index] = result;
         const finishedCount = state.results.filter(r => r !== null).length;
         if (progressBar) progressBar.value = Math.round((finishedCount / state.files.length) * 100);
-        renderResults();
+        render();
       })
     );
     await Promise.all(conversionPromises);
@@ -1559,8 +1560,7 @@ async function runConversion() {
     return false;
   } finally {
     setUiLock(false);
-    updateZipButtonState();
-    updateUploadAllButtonState();
+    render();
   }
 }
 
@@ -1652,12 +1652,12 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
 
   if (result.size > KV_MAX_SIZE) {
     result.error = "25MBを超えるファイルはKVに保存できません（上限: 25MB）";
-    renderResults();
+    render();
     return;
   }
 
   result.isUploading = true;
-  renderResults();
+  render();
 
   try {
     const ttl = customTtl !== null ? String(customTtl) : (tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200");
@@ -1697,7 +1697,7 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
     return false;
   } finally {
     result.isUploading = false;
-    renderResults();
+    render();
   }
 }
 
