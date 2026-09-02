@@ -1257,13 +1257,22 @@ function createCardActionHtml(file, result, index) {
 
   const isConvertOn = enableConvertCheck?.checked ?? true;
   const isRenameOn = enableRenameCheck?.checked ?? true;
-  const canProcessLocal = isConvertOn || isRenameOn;
+  const cfOk = updateCfStatus();
+  const currentSize = result ? result.size : file.size;
+  const isOverKvLimit = currentSize > KV_MAX_SIZE;
+  const isCivitaiValid = isCivitaiSupported && cfOk && !isOverKvLimit;
 
-  const civitaiBtnDisabled = !isCivitaiSupported ? "disabled" : "";
-  const civitaiBtnTitle = isCivitaiSupported
-    ? "リネームを無視して変換・一時共有し、Civitaiの投稿画面を開く"
-    : "Civitai非対応フォーマット（画像: JPG/PNG/WebP, 動画: MP4/WebM のみ）";
-  const civitaiBtnStyle = isCivitaiSupported
+  const civitaiBtnDisabled = !isCivitaiValid ? "disabled" : "";
+  let civitaiBtnTitle = "リネームを無視して変換・一時共有し、Civitaiの投稿画面を開く";
+  if (!cfOk) {
+    civitaiBtnTitle = "Cloudflare未設定のためCivitai自動連携は利用できません（Worker URLとトークンを設定してください）";
+  } else if (!isCivitaiSupported) {
+    civitaiBtnTitle = "Civitai非対応フォーマット（画像: JPG/PNG/WebP, 動画: MP4/WebM のみ）";
+  } else if (isOverKvLimit) {
+    civitaiBtnTitle = "25MB超のため一時共有不可（上限: 25MB）";
+  }
+
+  const civitaiBtnStyle = isCivitaiValid
     ? "color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;"
     : "opacity: 0.35; font-size: 11px; padding: 0 8px; height: 28px; cursor: not-allowed;";
 
@@ -1272,15 +1281,16 @@ function createCardActionHtml(file, result, index) {
     ? "変換・リネームが両方オフのためダウンロード無効"
     : "ダウンロード";
 
-  const currentSize = result ? result.size : file.size;
-  const isOverKvLimit = currentSize > KV_MAX_SIZE;
-  const upBtnDisabled = isOverKvLimit ? "disabled" : "";
-  const upBtnTitle = isOverKvLimit
-    ? "25MB超のためCloudflare KVへアップロード不可（上限: 25MB）"
-    : "このファイルだけ変換してCloudflareへアップロード";
-  const upBtnStyle = isOverKvLimit
-    ? "opacity: 0.35; font-size: 11px; padding: 0 8px; height: 28px; cursor: not-allowed;"
-    : "font-size: 11px; padding: 0 8px; height: 28px;";
+  const upBtnDisabled = (isOverKvLimit || !cfOk) ? "disabled" : "";
+  let upBtnTitle = "このファイルだけ変換してCloudflareへアップロード";
+  if (!cfOk) {
+    upBtnTitle = "Cloudflare未設定のためアップロード不可";
+  } else if (isOverKvLimit) {
+    upBtnTitle = "25MB超のためCloudflare KVへアップロード不可（上限: 25MB）";
+  }
+  const upBtnStyle = (!isOverKvLimit && cfOk)
+    ? "font-size: 11px; padding: 0 8px; height: 28px;"
+    : "opacity: 0.35; font-size: 11px; padding: 0 8px; height: 28px; cursor: not-allowed;";
 
   if (result && result.isUploading) {
     return `<span class="status-text saving" style="font-size: 11px;">アップロード中...</span>`;
@@ -1385,43 +1395,58 @@ fileList?.addEventListener("click", async (event) => {
     return;
   }
 
-  // 5. Civitai 転送（Cloudflareアップロード不要・直接Civitai投稿画面を開く）
+  // 5. Civitai 転送（A案: リネーム無視で変換 ➔ 一時共有 ➔ Civitai Intent 自動セット起動）
   if (target.classList.contains("civitai-post-btn")) {
     if (isNaN(index) || index < 0 || index >= state.files.length) return;
     const file = state.files[index];
     let result = state.results[index];
 
+    if (!updateCfStatus()) {
+      alert("⚠️ Cloudflare 接続設定（Worker URLとAPIトークン）を設定して保存してください。");
+      return;
+    }
+
     target.disabled = true;
-    target.textContent = "処理中...";
+    target.textContent = "転送中...";
 
     try {
-      // 1. 設定に従いローカル変換（リネームは無視して元ファイル名を維持）
-      if (!result) {
-        result = await convertImage(file, index);
-        state.results[index] = result;
-      }
+      // 1. リネーム設定は無視して元ファイル名ベースで確実に変換
+      if (!result || !result.isUploaded) {
+        const isConvertOn = enableConvertCheck?.checked ?? true;
+        const dotIndex = file.name.lastIndexOf(".");
+        const fileExt = dotIndex > 0 ? file.name.slice(dotIndex + 1).toLowerCase() : "";
+        const isImage = file.type?.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(fileExt);
 
-      // 2. 変換後の画像をクリップボードにコピー（ブラウザが対応していれば画像データを直接クリップボードへ）
-      if (result.blob && navigator.clipboard && window.ClipboardItem) {
-        try {
-          const mime = result.blob.type || "image/png";
-          if (mime === "image/png" || mime === "image/jpeg") {
-            await navigator.clipboard.write([
-              new ClipboardItem({ [mime]: result.blob })
-            ]);
-          }
-        } catch (clipErr) {
-          console.warn("ClipboardItem write skipped:", clipErr);
+        let finalName = file.name;
+        if (isConvertOn && isImage) {
+          const baseName = dotIndex > 0 ? file.name.slice(0, dotIndex) : file.name;
+          const targetExt = extensions[formatSelect?.value || "image/webp"] || "webp";
+          finalName = `${baseName}.${targetExt}`;
         }
+
+        if (!result) {
+          result = await convertImage(file, index);
+          result.name = finalName;
+          state.results[index] = result;
+        } else {
+          result.name = finalName;
+        }
+
+        const success = await uploadImage(result);
+        if (!success || !result.proxyUrl) {
+          throw new Error("Cloudflare への一時アップロードに失敗しました。接続設定をご確認ください。");
+        }
+        await fetchAndRenderR2Files();
       }
 
-      // 3. Civitai の投稿作成ページを直接開く（Cloudflare 一切不要！）
-      const civitaiCreateUrl = "https://civitai.com/posts/create";
-      window.open(civitaiCreateUrl, "_blank", "noopener,noreferrer");
+      // 2. Civitai Intent API を開く（画像とプロンプトが自動セットされる！）
+      const mediaUrl = result.proxyUrl;
+      const mediaName = file.name;
+      openCivitaiIntent(mediaUrl, mediaName);
 
     } catch (e) {
       console.error("Civitai post error:", e);
-      alert("Civitai 画面の起動に失敗しました: " + e.message);
+      alert(e.message);
     } finally {
       target.disabled = false;
       target.textContent = "🎨 Civitai";
