@@ -1911,24 +1911,27 @@ function renderUrlPalette() {
     
     const ext = file.key ? file.key.split('.').pop().toLowerCase() : "";
     const isVideo = file.isVideo || ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
+    const isImage = !isVideo && (file.previewUrl || ["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext) || file.isCivitai);
 
-    if (file.previewUrl || ["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext)) {
-      const img = document.createElement("img");
-      img.src = file.previewUrl || file.url;
-      img.alt = file.key;
-      img.loading = "lazy";
-      btn.append(img);
-    } else if (isVideo) {
+    if (isVideo) {
       const video = document.createElement("video");
       video.src = `${file.url}#t=0.5`;
       video.preload = "metadata";
       video.muted = true;
       video.playsInline = true;
+      video.setAttribute("referrerpolicy", "no-referrer");
       video.style.width = "100%";
       video.style.height = "100%";
       video.style.objectFit = "cover";
       video.style.pointerEvents = "none";
       btn.append(video);
+    } else if (isImage) {
+      const img = document.createElement("img");
+      img.src = file.previewUrl || file.url;
+      img.alt = "";
+      img.loading = "lazy";
+      img.setAttribute("referrerpolicy", "no-referrer");
+      btn.append(img);
     } else {
       btn.className += " format-badge";
       btn.textContent = ext.toUpperCase() || "FILE";
