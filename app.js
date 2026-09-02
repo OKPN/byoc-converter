@@ -241,7 +241,6 @@ const uploadOriginalButton = document.querySelector("#uploadOriginalButton");
 const convertDownloadButton = document.querySelector("#convertDownloadButton");
 const zipButton = document.querySelector("#zipButton");
 const uploadAllButton = document.querySelector("#uploadAllButton");
-const civitaiAllButton = document.querySelector("#civitaiAllButton");
 const clearButton = document.querySelector("#clearButton");
 
 // 設定要素
@@ -1586,33 +1585,7 @@ function updateUploadAllButtonState() {
   if (uploadAllButton) {
     uploadAllButton.disabled = unuploaded.length === 0 || !cfOk;
   }
-  if (civitaiAllButton) {
-    civitaiAllButton.disabled = !state.results || state.results.length === 0 || !cfOk;
-  }
 }
-
-civitaiAllButton?.addEventListener("click", async () => {
-  if (!state.results || state.results.length === 0) return;
-
-  // 未アップロードのアイテムがあれば、まずアップロードを実行
-  const unuploaded = state.results.filter(r => r && !r.isUploaded && !r.isUploading);
-  if (unuploaded.length > 0) {
-    civitaiAllButton.disabled = true;
-    civitaiAllButton.textContent = "アップロード中...";
-    for (const item of unuploaded) {
-      if (item.size <= KV_MAX_SIZE) {
-        await uploadImage(item);
-      }
-    }
-    civitaiAllButton.textContent = "🎨 Civitai へ転送";
-  }
-
-  // アップロード済みのアイテム（最初のファイル）の Civitai Intent を開く
-  const uploaded = state.results.find(r => r && r.isUploaded && r.proxyUrl);
-  if (uploaded) {
-    openCivitaiIntent(uploaded.proxyUrl, uploaded.name);
-  }
-});
 
 uploadAllButton?.addEventListener("click", async () => {
   const targets = state.results ? state.results.filter(r => r && !r.isUploaded && !r.isUploading) : [];
