@@ -138,6 +138,11 @@
                     <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
                   </label>
+                  <label class="field">
+                    <span><span>Civitai ユーザー名</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
+                    <input id="civitaiUsername" type="text" placeholder="例: OKPN" spellcheck="false" autocomplete="off">
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;">入力すると下部に Civitai の永久直リンク一覧（ギャラリー）が表示されます</span>
+                  </label>
                   <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                     <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;" data-i18n="btnSave">保存する</button>
                     <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホへ共有</button>
@@ -250,6 +255,20 @@
             </div>
           </div>
           <div class="result-list" id="r2FileList"></div>
+        </section>
+
+        <!-- 🎨 Civitai ギャラリー (クラウド永久保存) セクション -->
+        <section class="panel" id="civitaiPanel" style="display: none; margin-top: 20px;">
+          <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h2 style="font-size: 15px; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <span>🎨 Civitai ギャラリー (クラウド永久保存)</span>
+            </h2>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="ghost-button" id="reloadCivitaiButton" type="button" style="font-size: 12px; padding: 4px 10px;">🔄 更新</button>
+              <a id="civitaiProfileLink" href="https://civitai.com" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 12px; padding: 4px 10px; text-decoration: none;" title="Civitai のプロフィールページを開く">Civitai ↗</a>
+            </div>
+          </div>
+          <div class="result-list" id="civitaiGalleryList" style="margin-top: 12px;"></div>
         </section>
 
         <footer class="site-footer">

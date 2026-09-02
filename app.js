@@ -173,11 +173,24 @@ const cfEndpoint = document.querySelector("#cfEndpoint");
 const cfToken = document.querySelector("#cfToken");
 const cfUploadToken = document.querySelector("#cfUploadToken");
 const cfDirectDomain = document.querySelector("#cfDirectDomain");
+const civitaiUsername = document.querySelector("#civitaiUsername");
 const cfStatus = document.querySelector("#cfStatus");
 const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
 const cfSaveButton = document.querySelector("#cfSaveButton");
 const cfClearButton = document.querySelector("#cfClearButton");
 const cfShareQrButton = document.querySelector("#cfShareQrButton");
+
+// 🎨 Civitai ギャラリー要素
+const civitaiPanel = document.querySelector("#civitaiPanel");
+const civitaiGalleryList = document.querySelector("#civitaiGalleryList");
+const reloadCivitaiButton = document.querySelector("#reloadCivitaiButton");
+const civitaiProfileLink = document.querySelector("#civitaiProfileLink");
+
+function openCivitaiIntent(mediaUrl, title = "") {
+  if (!mediaUrl) return;
+  const intentUrl = `https://civitai.com/intent/post?mediaUrl=${encodeURIComponent(mediaUrl)}${title ? `&title=${encodeURIComponent(title)}` : ""}`;
+  window.open(intentUrl, "_blank", "noopener,noreferrer");
+}
 
 // QRコードモーダル要素
 const qrModal = document.querySelector("#qrModal");
@@ -353,6 +366,87 @@ function updateCfStatus() {
   return isConfigured;
 }
 
+function updateCivitaiStatus() {
+  const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
+  if (civitaiPanel) {
+    civitaiPanel.style.display = username ? "block" : "none";
+  }
+  if (civitaiProfileLink) {
+    civitaiProfileLink.href = username ? `https://civitai.com/user/${encodeURIComponent(username)}/images` : "https://civitai.com";
+  }
+  return username !== "";
+}
+
+async function fetchAndRenderCivitaiGallery() {
+  const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
+  if (!civitaiGalleryList || !username) return;
+
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+
+  civitaiGalleryList.innerHTML = `<span class="status-text" style="padding: 18px;">Civitai からメディアを取得中 (${escapeHtml(username)})...</span>`;
+
+  try {
+    const res = await fetch(`https://civitai.com/api/v1/images?username=${encodeURIComponent(username)}&limit=24&sort=Newest`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+    const data = await res.json();
+    const items = data.items || [];
+
+    civitaiGalleryList.innerHTML = "";
+    if (items.length === 0) {
+      civitaiGalleryList.innerHTML = `<span class="item-meta" style="padding: 18px;">Civitai に投稿されたメディアが見つかりませんでした。</span>`;
+      return;
+    }
+
+    items.forEach(item => {
+      const article = document.createElement("article");
+      article.className = "result-item";
+
+      const isVideo = item.type === "video";
+      const directUrl = item.url;
+      const civitaiPostPageUrl = `https://civitai.com/images/${item.id}`;
+
+      let thumbHtml = "";
+      if (isVideo) {
+        thumbHtml = `<video class="thumb" src="${escapeHtml(directUrl)}" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
+      } else {
+        const previewSrc = directUrl.includes("/original=true/") ? directUrl.replace("/original=true/", "/width=450/") : directUrl;
+        thumbHtml = `<img class="thumb" alt="" src="${escapeHtml(previewSrc)}" loading="lazy">`;
+      }
+
+      const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "";
+      const dimensions = item.width && item.height ? `${item.width}×${item.height}` : "";
+
+      article.innerHTML = `
+        <a href="${escapeHtml(directUrl)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="直リンクを表示">
+          ${thumbHtml}
+        </a>
+        <div style="flex: 1; min-width: 0;">
+          <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span class="item-name" style="font-weight: 600; font-size: 12px; font-family: monospace;">ID: ${escapeHtml(String(item.id))}</span>
+            <span class="format-badge" style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${isVideo ? "🎬 VIDEO" : "🖼️ IMAGE"}</span>
+            ${dimensions ? `<span style="color: #64748b; font-size: 11px;">${escapeHtml(dimensions)}</span>` : ""}
+          </div>
+          <div class="item-meta" style="color: var(--muted); margin-top: 4px; font-size: 11px;">
+            投稿日: ${escapeHtml(dateStr)} · <a href="${escapeHtml(civitaiPostPageUrl)}" target="_blank" rel="noopener noreferrer" style="color: #818cf8; text-decoration: none;">Civitai 投稿ページ ↗</a>
+          </div>
+        </div>
+        <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button type="button" class="ghost-button civitai-copy-btn" data-url="${escapeHtml(directUrl)}">📋 永久直リンクコピー</button>
+          <a href="${escapeHtml(civitaiPostPageUrl)}" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);" title="Civitai で投稿の編集・削除を行う">🗑️ 削除/確認 ↗</a>
+        </div>
+      `;
+
+      civitaiGalleryList.append(article);
+    });
+  } catch (err) {
+    console.error("Civitai gallery fetch error:", err);
+    civitaiGalleryList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">Civitai ギャラリーの取得に失敗しました: ${escapeHtml(err.message)}</span>`;
+  }
+}
+
 // --- 設定の読み込みと初期化 ---
 
 function loadSettings() {
@@ -361,13 +455,16 @@ function loadSettings() {
   const savedToken       = localStorage.getItem("cfToken")    || "";
   const savedUploadToken = localStorage.getItem("cfUploadToken") || "";
   const savedDirect      = localStorage.getItem("cfDirectDomain") || "";
+  const savedCivitaiUser = localStorage.getItem("civitaiUsername") || "";
 
   if (cfEndpoint)    cfEndpoint.value    = savedEndpoint;
   if (cfToken)       cfToken.value       = savedToken;
   if (cfUploadToken) cfUploadToken.value = savedUploadToken;
   if (cfDirectDomain) cfDirectDomain.value = savedDirect;
+  if (civitaiUsername) civitaiUsername.value = savedCivitaiUser;
 
   updateCfStatus();
+  updateCivitaiStatus();
 
   const savedFormat = localStorage.getItem("formatSelect");
   if (savedFormat && extensions[savedFormat] && formatSelect) {
@@ -548,6 +645,9 @@ setAppLanguage(getAppLanguage());
 if (localStorage.getItem("cfEndpoint") && localStorage.getItem("cfToken")) {
   fetchAndRenderR2Files();
 }
+if (localStorage.getItem("civitaiUsername")) {
+  fetchAndRenderCivitaiGallery();
+}
 
 // --- ☁️ Cloudflare 情報のイベントハンドラ ---
 
@@ -558,6 +658,7 @@ const saveCfSettingsAuto = () => {
   const token       = cfToken?.value?.trim()    || "";
   const uploadToken = cfUploadToken?.value?.trim() || "";
   const direct      = cfDirectDomain?.value?.trim() || "";
+  const cUser       = civitaiUsername?.value?.trim() || "";
 
   if (endpoint) {
     localStorage.setItem("cfEndpoint", endpoint);
@@ -573,8 +674,14 @@ const saveCfSettingsAuto = () => {
   if (direct) {
     localStorage.setItem("cfDirectDomain", direct);
   }
+  if (cUser) {
+    localStorage.setItem("civitaiUsername", cUser);
+  } else {
+    localStorage.removeItem("civitaiUsername");
+  }
 
   const isConfigured = updateCfStatus();
+  updateCivitaiStatus();
   render();
 
   // Worker URL と API トークンの両方が入力完了したら、400ms 後に自動で KV ファイル一覧を取得・更新
@@ -584,12 +691,16 @@ const saveCfSettingsAuto = () => {
       fetchAndRenderR2Files();
     }, 400);
   }
+  if (cUser) {
+    fetchAndRenderCivitaiGallery();
+  }
 };
 
 cfEndpoint?.addEventListener("input", saveCfSettingsAuto);
 cfToken?.addEventListener("input", saveCfSettingsAuto);
 cfUploadToken?.addEventListener("input", saveCfSettingsAuto);
 cfDirectDomain?.addEventListener("input", saveCfSettingsAuto);
+civitaiUsername?.addEventListener("input", saveCfSettingsAuto);
 
 cfSaveButton?.addEventListener("click", () => {
   const endpoint = cfEndpoint?.value?.trim() || "";
@@ -603,6 +714,7 @@ cfSaveButton?.addEventListener("click", () => {
   saveCfSettingsAuto();
   if (cfSettingsAccordion) cfSettingsAccordion.open = false;
   fetchAndRenderR2Files();
+  fetchAndRenderCivitaiGallery();
 });
 
 cfClearButton?.addEventListener("click", () => {
@@ -610,15 +722,19 @@ cfClearButton?.addEventListener("click", () => {
   localStorage.removeItem("cfToken");
   localStorage.removeItem("cfUploadToken");
   localStorage.removeItem("cfDirectDomain");
+  localStorage.removeItem("civitaiUsername");
 
   if (cfEndpoint)    cfEndpoint.value    = "";
   if (cfToken)       cfToken.value       = "";
   if (cfUploadToken) cfUploadToken.value = "";
   if (cfDirectDomain) cfDirectDomain.value = "";
+  if (civitaiUsername) civitaiUsername.value = "";
 
   updateCfStatus();
+  updateCivitaiStatus();
   render();
   fetchAndRenderR2Files(); // クリア時も表示を更新
+  fetchAndRenderCivitaiGallery();
   if (cfSettingsAccordion) cfSettingsAccordion.open = true;
 });
 
@@ -1073,6 +1189,7 @@ function createActionHtml(result) {
       <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly>
       <button type="button" class="ghost-button copy-button">${escapeHtml(dict.copyUrl)}</button>
       ${downloadBtn}
+      <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-url="${escapeHtml(result.proxyUrl)}" data-name="${escapeHtml(result.name)}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
     `;
   }
   return `
@@ -1104,6 +1221,12 @@ resultList?.addEventListener("click", async (event) => {
     const inputUrl = item?.querySelector(".url-output")?.value;
     const urlToCopy = result.proxyUrl || inputUrl || target.dataset.url;
     await copyToClipboard(urlToCopy, target);
+  }
+
+  if (target.classList.contains("civitai-post-btn")) {
+    const mediaUrl = target.dataset.url || result.proxyUrl;
+    const name = target.dataset.name || result.name;
+    openCivitaiIntent(mediaUrl, name);
   }
 
   if (target.classList.contains("delete-button")) {
@@ -1599,6 +1722,7 @@ async function fetchAndRenderR2Files() {
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <button type="button" class="ghost-button copy-button" data-url="${escapeHtml(file.url)}">${escapeHtml(dict.copyUrl)}</button>
+          <button type="button" class="ghost-button civitai-r2-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-url="${escapeHtml(file.url)}" data-name="${escapeHtml(file.filename)}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
           <button type="button" class="ghost-button temp-extend-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.extend24h)}</button>
           <button type="button" class="ghost-button danger-button temp-delete-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.deleteNow)}</button>
         </div>
@@ -1893,6 +2017,27 @@ r2FileList?.addEventListener("click", async (event) => {
       }
     } catch (err) {
       alert("エラー: " + err.message);
+    }
+  }
+
+  if (target.classList.contains("civitai-r2-post-btn")) {
+    const mediaUrl = target.dataset.url;
+    const name = target.dataset.name;
+    openCivitaiIntent(mediaUrl, name);
+  }
+});
+
+// Civitai ギャラリーのイベント
+reloadCivitaiButton?.addEventListener("click", () => {
+  fetchAndRenderCivitaiGallery();
+});
+
+civitaiGalleryList?.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (target.classList.contains("civitai-copy-btn")) {
+    const url = target.dataset.url;
+    if (url) {
+      await copyToClipboard(url, target);
     }
   }
 });
