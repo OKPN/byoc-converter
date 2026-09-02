@@ -249,6 +249,7 @@ const clearButton = document.querySelector("#clearButton");
 const progressBar = document.querySelector("#progressBar");
 const enableConvertCheck = document.querySelector("#enableConvertCheck");
 const enableRenameCheck = document.querySelector("#enableRenameCheck");
+const enableZipCheck = document.querySelector("#enableZipCheck");
 const convertSettingsArea = document.querySelector("#convertSettingsArea");
 const renameSettingsArea = document.querySelector("#renameSettingsArea");
 const qualityRange = document.querySelector("#qualityRange");
@@ -504,6 +505,11 @@ function loadSettings() {
   }
   if (renameSettingsArea && enableRenameCheck) {
     renameSettingsArea.classList.toggle("is-disabled-area", !enableRenameCheck.checked);
+  }
+
+  const savedEnableZip = localStorage.getItem("enableZip");
+  if (savedEnableZip !== null && enableZipCheck) {
+    enableZipCheck.checked = savedEnableZip === "true";
   }
 
   const savedFormat = localStorage.getItem("formatSelect");
@@ -875,6 +881,11 @@ enableRenameCheck?.addEventListener("change", () => {
   }
   render();
   updateRenamePreview();
+});
+
+enableZipCheck?.addEventListener("change", () => {
+  const isChecked = enableZipCheck.checked;
+  localStorage.setItem("enableZip", String(isChecked));
 });
 
 qualityRange?.addEventListener("input", () => {
@@ -1619,14 +1630,46 @@ convertDownloadButton?.addEventListener("click", async () => {
   const success = await runConversion();
   if (!success) return;
 
-  if (statusText) statusText.textContent = "自動ダウンロード中...";
-  for (const result of state.results) {
-    if (result && result.url) {
-      downloadUrl(result.url, result.name);
-      await new Promise(resolve => setTimeout(resolve, 300));
+  const isZipOn = enableZipCheck?.checked ?? false;
+  const validResults = state.results.filter(r => r && r.blob);
+
+  if (isZipOn && validResults.length > 0) {
+    if (statusText) statusText.textContent = "ZIP作成中...";
+    try {
+      const zipEntries = [];
+      for (const result of validResults) {
+        const arrayBuffer = await result.blob.arrayBuffer();
+        zipEntries.push({
+          name: result.name,
+          data: new Uint8Array(arrayBuffer),
+        });
+      }
+      const zipBytes = createZip(zipEntries);
+      const zipBlob = new Blob([zipBytes], { type: "application/zip" });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      downloadUrl(zipUrl, "converted-images.zip");
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 1500);
+      if (statusText) statusText.textContent = "ZIP一括ダウンロード完了";
+    } catch (err) {
+      console.error("ZIP creation error:", err);
+      alert("ZIP作成に失敗しました。個別ダウンロードに切り替えます。");
+      for (const result of validResults) {
+        if (result && result.url) {
+          downloadUrl(result.url, result.name);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
     }
+  } else {
+    if (statusText) statusText.textContent = "ダウンロード中...";
+    for (const result of state.results) {
+      if (result && result.url) {
+        downloadUrl(result.url, result.name);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+    if (statusText) statusText.textContent = "ダウンロード完了";
   }
-  if (statusText) statusText.textContent = "自動ダウンロード完了";
 });
 
 uploadOriginalButton?.addEventListener("click", async () => {
