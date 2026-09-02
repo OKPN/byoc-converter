@@ -138,11 +138,6 @@
                     <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
                   </label>
-                  <label class="field">
-                    <span><span>Civitai ユーザー名</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                    <input id="civitaiUsername" type="text" placeholder="例: OKPN" spellcheck="false" autocomplete="off">
-                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;">入力すると下部に Civitai の永久直リンク一覧（ギャラリー）が表示されます</span>
-                  </label>
                   <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                     <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;" data-i18n="btnSave">保存する</button>
                     <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホへ共有</button>
@@ -258,12 +253,16 @@
         </section>
 
         <!-- 🎨 Civitai ギャラリー (クラウド永久保存) セクション -->
-        <section class="panel" id="civitaiPanel" style="display: none; margin-top: 20px;">
-          <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <section class="panel" id="civitaiPanel" style="margin-top: 20px;">
+          <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <h2 style="font-size: 15px; margin: 0; display: flex; align-items: center; gap: 6px;">
               <span>🎨 Civitai ギャラリー (クラウド永久保存)</span>
             </h2>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border);">
+                <span style="font-size: 11px; color: var(--muted); white-space: nowrap;">👤 ユーザー名:</span>
+                <input id="civitaiUsername" type="text" placeholder="例: OKPN" spellcheck="false" autocomplete="off" style="height: 28px; width: 110px; font-size: 12px; border: none; background: transparent; color: var(--text); outline: none; font-weight: 600;">
+              </div>
               <button class="ghost-button" id="reloadCivitaiButton" type="button" style="font-size: 12px; padding: 4px 10px;">🔄 更新</button>
               <a id="civitaiProfileLink" href="https://civitai.com" target="_blank" rel="noopener noreferrer" class="ghost-button" style="font-size: 12px; padding: 4px 10px; text-decoration: none;" title="Civitai のプロフィールページを開く">Civitai ↗</a>
             </div>

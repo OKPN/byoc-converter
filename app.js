@@ -368,9 +368,6 @@ function updateCfStatus() {
 
 function updateCivitaiStatus() {
   const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
-  if (civitaiPanel) {
-    civitaiPanel.style.display = username ? "block" : "none";
-  }
   if (civitaiProfileLink) {
     civitaiProfileLink.href = username ? `https://civitai.com/user/${encodeURIComponent(username)}/images` : "https://civitai.com";
   }
@@ -379,10 +376,15 @@ function updateCivitaiStatus() {
 
 async function fetchAndRenderCivitaiGallery() {
   const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
-  if (!civitaiGalleryList || !username) return;
+  if (!civitaiGalleryList) return;
 
   const lang = getAppLanguage();
   const dict = i18nDict[lang] || i18nDict.ja;
+
+  if (!username) {
+    civitaiGalleryList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted); text-align: center; display: block;">Civitai ユーザー名（例: OKPN）を入力すると、ここに投稿済みの動画・画像一覧（永久直リンク）が表示されます。</span>`;
+    return;
+  }
 
   civitaiGalleryList.innerHTML = `<span class="status-text" style="padding: 18px;">Civitai からメディアを取得中 (${escapeHtml(username)})...</span>`;
 
@@ -646,9 +648,7 @@ setAppLanguage(getAppLanguage());
 if (localStorage.getItem("cfEndpoint") && localStorage.getItem("cfToken")) {
   fetchAndRenderR2Files();
 }
-if (localStorage.getItem("civitaiUsername")) {
-  fetchAndRenderCivitaiGallery();
-}
+fetchAndRenderCivitaiGallery();
 
 // --- ☁️ Cloudflare 情報のイベントハンドラ ---
 
@@ -659,7 +659,6 @@ const saveCfSettingsAuto = () => {
   const token       = cfToken?.value?.trim()    || "";
   const uploadToken = cfUploadToken?.value?.trim() || "";
   const direct      = cfDirectDomain?.value?.trim() || "";
-  const cUser       = civitaiUsername?.value?.trim() || "";
 
   if (endpoint) {
     localStorage.setItem("cfEndpoint", endpoint);
@@ -675,14 +674,8 @@ const saveCfSettingsAuto = () => {
   if (direct) {
     localStorage.setItem("cfDirectDomain", direct);
   }
-  if (cUser) {
-    localStorage.setItem("civitaiUsername", cUser);
-  } else {
-    localStorage.removeItem("civitaiUsername");
-  }
 
   const isConfigured = updateCfStatus();
-  updateCivitaiStatus();
   render();
 
   // Worker URL と API トークンの両方が入力完了したら、400ms 後に自動で KV ファイル一覧を取得・更新
@@ -692,16 +685,29 @@ const saveCfSettingsAuto = () => {
       fetchAndRenderR2Files();
     }, 400);
   }
-  if (cUser) {
-    fetchAndRenderCivitaiGallery();
-  }
 };
 
 cfEndpoint?.addEventListener("input", saveCfSettingsAuto);
 cfToken?.addEventListener("input", saveCfSettingsAuto);
 cfUploadToken?.addEventListener("input", saveCfSettingsAuto);
 cfDirectDomain?.addEventListener("input", saveCfSettingsAuto);
-civitaiUsername?.addEventListener("input", saveCfSettingsAuto);
+
+// 🎨 Civitai ユーザー名の独立イベントリスナー (インライン入力時に自動保存 & ギャラリー更新)
+let civitaiFetchTimer = null;
+civitaiUsername?.addEventListener("input", () => {
+  const cUser = civitaiUsername?.value?.trim() || "";
+  if (cUser) {
+    localStorage.setItem("civitaiUsername", cUser);
+  } else {
+    localStorage.removeItem("civitaiUsername");
+  }
+  updateCivitaiStatus();
+
+  if (civitaiFetchTimer) clearTimeout(civitaiFetchTimer);
+  civitaiFetchTimer = setTimeout(() => {
+    fetchAndRenderCivitaiGallery();
+  }, 400);
+});
 
 cfSaveButton?.addEventListener("click", () => {
   const endpoint = cfEndpoint?.value?.trim() || "";
@@ -715,7 +721,6 @@ cfSaveButton?.addEventListener("click", () => {
   saveCfSettingsAuto();
   if (cfSettingsAccordion) cfSettingsAccordion.open = false;
   fetchAndRenderR2Files();
-  fetchAndRenderCivitaiGallery();
 });
 
 cfClearButton?.addEventListener("click", () => {
@@ -723,19 +728,15 @@ cfClearButton?.addEventListener("click", () => {
   localStorage.removeItem("cfToken");
   localStorage.removeItem("cfUploadToken");
   localStorage.removeItem("cfDirectDomain");
-  localStorage.removeItem("civitaiUsername");
 
   if (cfEndpoint)    cfEndpoint.value    = "";
   if (cfToken)       cfToken.value       = "";
   if (cfUploadToken) cfUploadToken.value = "";
   if (cfDirectDomain) cfDirectDomain.value = "";
-  if (civitaiUsername) civitaiUsername.value = "";
 
   updateCfStatus();
-  updateCivitaiStatus();
   render();
   fetchAndRenderR2Files(); // クリア時も表示を更新
-  fetchAndRenderCivitaiGallery();
   if (cfSettingsAccordion) cfSettingsAccordion.open = true;
 });
 
