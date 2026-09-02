@@ -2036,9 +2036,20 @@ reloadCivitaiButton?.addEventListener("click", () => {
 civitaiGalleryList?.addEventListener("click", async (event) => {
   const target = event.target;
   if (target.classList.contains("civitai-copy-btn")) {
-    const url = target.dataset.url;
-    if (url) {
-      await copyToClipboard(url, target);
+    const rawUrl = target.dataset.url;
+    if (!rawUrl) return;
+
+    const originalText = target.textContent;
+    try {
+      target.textContent = "解決中...";
+      // 301 リダイレクトを自動追跡して、真の blobs-b2 直リンク URL を取得
+      const res = await fetch(rawUrl);
+      const finalUrl = res.url || rawUrl;
+      target.dataset.url = finalUrl; // 次回以降のためにキャッシュ
+      await copyToClipboard(finalUrl, target);
+    } catch (err) {
+      console.warn("Failed to resolve redirect, falling back to raw url:", err);
+      await copyToClipboard(rawUrl, target);
     }
   }
 });
