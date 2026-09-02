@@ -1257,6 +1257,7 @@ function createCardActionHtml(file, result, index) {
 
   const isConvertOn = enableConvertCheck?.checked ?? true;
   const isRenameOn = enableRenameCheck?.checked ?? true;
+  const canProcessLocal = isConvertOn || isRenameOn;
   const cfOk = updateCfStatus();
   const currentSize = result ? result.size : file.size;
   const isOverKvLimit = currentSize > KV_MAX_SIZE;
