@@ -928,6 +928,7 @@ enableConvertCheck?.addEventListener("change", () => {
   if (convertSettingsArea) {
     convertSettingsArea.classList.toggle("is-disabled-area", !isChecked);
   }
+  invalidateConversionCache();
   render();
   updateRenamePreview();
 });
@@ -938,6 +939,7 @@ enableRenameCheck?.addEventListener("change", () => {
   if (renameSettingsArea) {
     renameSettingsArea.classList.toggle("is-disabled-area", !isChecked);
   }
+  invalidateConversionCache();
   render();
   updateRenamePreview();
 });
@@ -950,10 +952,13 @@ enableZipCheck?.addEventListener("change", () => {
 qualityRange?.addEventListener("input", () => {
   if (qualityOutput) qualityOutput.textContent = qualityRange.value;
   localStorage.setItem("qualityRange", qualityRange.value);
+  invalidateConversionCache();
 });
 
 formatSelect?.addEventListener("change", () => {
   localStorage.setItem("formatSelect", formatSelect.value);
+  invalidateConversionCache();
+  updateRenamePreview();
 });
 
 tempTtlSelect?.addEventListener("change", () => {
@@ -964,6 +969,7 @@ tempTtlSelect?.addEventListener("change", () => {
 
 renamePattern?.addEventListener("input", () => {
   localStorage.setItem("renamePattern", renamePattern.value.trim());
+  invalidateConversionCache();
   updateRenamePreview();
 });
 
@@ -972,12 +978,9 @@ clearRenamePattern?.addEventListener("click", () => {
     renamePattern.value = "";
     renamePattern.focus();
     localStorage.setItem("renamePattern", "");
+    invalidateConversionCache();
     updateRenamePreview();
   }
-});
-
-formatSelect?.addEventListener("change", () => {
-  updateRenamePreview();
 });
 
 document.querySelector(".pattern-helpers")?.addEventListener("click", (event) => {
@@ -998,6 +1001,7 @@ document.querySelector(".pattern-helpers")?.addEventListener("click", (event) =>
     renamePattern.setSelectionRange(newPos, newPos);
 
     localStorage.setItem("renamePattern", renamePattern.value.trim());
+    invalidateConversionCache();
     updateRenamePreview();
   }
 });
@@ -1129,6 +1133,7 @@ clearButton?.addEventListener("click", () => {
   });
   state.files = [];
   state.results = [];
+  invalidateConversionCache();
   render();
 });
 
@@ -1141,6 +1146,7 @@ function addFiles(files) {
            file.name.endsWith(".mp4");
   });
   state.files.push(...allowed);
+  invalidateConversionCache();
   render();
 }
 
@@ -1388,6 +1394,7 @@ fileList?.addEventListener("click", async (event) => {
       }
       state.files.splice(index, 1);
       state.results.splice(index, 1);
+      invalidateConversionCache();
       render();
     }
     return;
@@ -1514,10 +1521,42 @@ fileList?.addEventListener("click", async (event) => {
   }
 });
 
+// --- 設定シグネチャ & スマートバイパス ---
+
+let lastConvertedSignature = null;
+
+function getCurrentConfigSignature() {
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const format = formatSelect ? formatSelect.value : "image/webp";
+  const quality = qualityRange ? qualityRange.value : "85";
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const pattern = renamePattern ? renamePattern.value : "";
+  const fileSig = state.files.map(f => `${f.name}:${f.size}:${f.lastModified}`).join("|");
+
+  return `${isConvertOn}_${format}_${quality}_${isRenameOn}_${pattern}_${fileSig}`;
+}
+
+function isConversionCacheValid() {
+  if (!state.files.length) return false;
+  if (!state.results || state.results.length !== state.files.length) return false;
+  if (state.results.some(r => !r || !r.blob)) return false;
+  return lastConvertedSignature === getCurrentConfigSignature();
+}
+
+function invalidateConversionCache() {
+  lastConvertedSignature = null;
+}
+
 // --- 画像変換処理 ---
 
-async function runConversion() {
+async function runConversion(force = false) {
   if (!state.files.length) return false;
+
+  // 設定が変わっておらず、すでに変換済みBlobが揃っている場合は完全バイパス！
+  if (!force && isConversionCacheValid()) {
+    return true;
+  }
+
   if (progressBar) progressBar.value = 0;
   if (statusText) {
     statusText.textContent = "変換中...";
@@ -1546,6 +1585,7 @@ async function runConversion() {
       })
     );
     await Promise.all(conversionPromises);
+    lastConvertedSignature = getCurrentConfigSignature();
     if (statusText) {
       statusText.textContent = "変換完了";
       statusText.className = "";
@@ -1553,6 +1593,7 @@ async function runConversion() {
     return true;
   } catch (error) {
     console.error("Conversion error:", error);
+    lastConvertedSignature = null;
     if (statusText) {
       statusText.textContent = "変換失敗";
       statusText.className = "error";
