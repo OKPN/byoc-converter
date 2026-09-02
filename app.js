@@ -245,6 +245,10 @@ const clearButton = document.querySelector("#clearButton");
 
 // 設定要素
 const progressBar = document.querySelector("#progressBar");
+const enableConvertCheck = document.querySelector("#enableConvertCheck");
+const enableRenameCheck = document.querySelector("#enableRenameCheck");
+const convertSettingsArea = document.querySelector("#convertSettingsArea");
+const renameSettingsArea = document.querySelector("#renameSettingsArea");
 const qualityRange = document.querySelector("#qualityRange");
 const qualityOutput = document.querySelector("#qualityOutput");
 const formatSelect = document.querySelector("#formatSelect");
@@ -468,6 +472,22 @@ function loadSettings() {
 
   updateCfStatus();
   updateCivitaiStatus();
+
+  const savedEnableConvert = localStorage.getItem("enableConvert");
+  if (savedEnableConvert !== null && enableConvertCheck) {
+    enableConvertCheck.checked = savedEnableConvert === "true";
+  }
+  if (convertSettingsArea && enableConvertCheck) {
+    convertSettingsArea.classList.toggle("is-disabled-area", !enableConvertCheck.checked);
+  }
+
+  const savedEnableRename = localStorage.getItem("enableRename");
+  if (savedEnableRename !== null && enableRenameCheck) {
+    enableRenameCheck.checked = savedEnableRename === "true";
+  }
+  if (renameSettingsArea && enableRenameCheck) {
+    renameSettingsArea.classList.toggle("is-disabled-area", !enableRenameCheck.checked);
+  }
 
   const savedFormat = localStorage.getItem("formatSelect");
   if (savedFormat && extensions[savedFormat] && formatSelect) {
@@ -820,6 +840,26 @@ qrModal?.addEventListener("click", (e) => {
 
 // --- UIイベントリスナー ---
 
+enableConvertCheck?.addEventListener("change", () => {
+  const isChecked = enableConvertCheck.checked;
+  localStorage.setItem("enableConvert", String(isChecked));
+  if (convertSettingsArea) {
+    convertSettingsArea.classList.toggle("is-disabled-area", !isChecked);
+  }
+  render();
+  updateRenamePreview();
+});
+
+enableRenameCheck?.addEventListener("change", () => {
+  const isChecked = enableRenameCheck.checked;
+  localStorage.setItem("enableRename", String(isChecked));
+  if (renameSettingsArea) {
+    renameSettingsArea.classList.toggle("is-disabled-area", !isChecked);
+  }
+  render();
+  updateRenamePreview();
+});
+
 qualityRange?.addEventListener("input", () => {
   if (qualityOutput) qualityOutput.textContent = qualityRange.value;
   localStorage.setItem("qualityRange", qualityRange.value);
@@ -1019,22 +1059,36 @@ function addFiles(files) {
 
 function setUiLock(locked) {
   const cfOk = updateCfStatus();
+  const hasFiles = state.files.length > 0;
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const canProcessLocal = isConvertOn || isRenameOn;
+
   if (fileInput) fileInput.disabled = locked;
   if (dropzone) dropzone.classList.toggle("is-disabled", locked);
   if (clearButton) clearButton.disabled = locked;
-  if (convertButton) convertButton.disabled = locked || state.files.length === 0;
-  if (convertUploadButton) convertUploadButton.disabled = locked || state.files.length === 0 || !cfOk;
-  if (convertDownloadButton) convertDownloadButton.disabled = locked || state.files.length === 0;
-  if (uploadOriginalButton) uploadOriginalButton.disabled = locked || state.files.length === 0 || !cfOk;
-  if (uploadRenameButton) uploadRenameButton.disabled = locked || state.files.length === 0 || !cfOk;
+  if (convertButton) convertButton.disabled = locked || !hasFiles || !canProcessLocal;
+  if (convertDownloadButton) convertDownloadButton.disabled = locked || !hasFiles || !canProcessLocal;
+  if (convertUploadButton) convertUploadButton.disabled = locked || !hasFiles || !cfOk;
   if (locked && uploadAllButton) uploadAllButton.disabled = true;
 }
 
 function updateRenamePreview() {
+  const previewText = document.querySelector("#renamePreviewText");
+  if (!previewText) return;
+
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const ext = isConvertOn ? (extensions[formatSelect?.value || "image/webp"] || "webp") : "ext";
+  const dummyName = state.files[0] ? state.files[0].name.replace(/\.[^.]+$/, "") : "sample";
+
+  if (!isRenameOn) {
+    previewText.textContent = isConvertOn ? `${dummyName}.${ext}` : "元ファイル名のまま";
+    return;
+  }
+
   const rawPattern = renamePattern?.value;
   const pattern = (rawPattern !== undefined && rawPattern !== "") ? rawPattern : "{name}";
-  const ext = extensions[formatSelect?.value || "image/webp"] || "webp";
-  const dummyName = state.files[0] ? state.files[0].name.replace(/\.[^.]+$/, "") : "sample";
   
   let previewName = pattern.replaceAll("{name}", dummyName);
 
@@ -1049,11 +1103,7 @@ function updateRenamePreview() {
   });
 
   previewName = previewName.replace(/[\\/:*?"<>|]/g, "-");
-
-  const previewText = document.querySelector("#renamePreviewText");
-  if (previewText) {
-    previewText.textContent = `${previewName}.${ext}`;
-  }
+  previewText.textContent = `${previewName}.${ext}`;
 }
 
 function render() {
@@ -1061,11 +1111,13 @@ function render() {
   const hasFiles = state.files.length > 0;
   if (fileCount) fileCount.textContent = `${state.files.length}件`;
 
-  if (convertButton) convertButton.disabled = !hasFiles;
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const canProcessLocal = isConvertOn || isRenameOn;
+
+  if (convertButton) convertButton.disabled = !hasFiles || !canProcessLocal;
+  if (convertDownloadButton) convertDownloadButton.disabled = !hasFiles || !canProcessLocal;
   if (convertUploadButton) convertUploadButton.disabled = !hasFiles || !cfOk;
-  if (convertDownloadButton) convertDownloadButton.disabled = !hasFiles;
-  if (uploadOriginalButton) uploadOriginalButton.disabled = !hasFiles || !cfOk;
-  if (uploadRenameButton) uploadRenameButton.disabled = !hasFiles || !cfOk;
 
   updateZipButtonState();
   updateUploadAllButtonState();
@@ -1334,7 +1386,10 @@ async function runConversion() {
 }
 
 async function convertImage(file, index = 0) {
-  if (!file.type.startsWith("image/")) {
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const isImage = file.type.startsWith("image/");
+
+  if (!isImage || !isConvertOn) {
     const url = URL.createObjectURL(file);
     const outputName = createOutputName(file.name, null, index);
     return {
@@ -1342,11 +1397,11 @@ async function convertImage(file, index = 0) {
       name: outputName,
       relativePath: file.relativePath || file.name,
       url,
-      previewUrl: "",
+      previewUrl: isImage ? url : "",
       blob: file,
       size: file.size,
       originalSize: file.size,
-      isNonImage: true,
+      isNonImage: !isImage,
     };
   }
 
@@ -2200,27 +2255,37 @@ function createOutputName(originalName, mimeType, index = 0) {
   const dotIndex = originalName.lastIndexOf(".");
   const baseName = dotIndex > 0 ? originalName.slice(0, dotIndex) : originalName;
   const originalExt = dotIndex > 0 ? originalName.slice(dotIndex + 1) : "";
-  const pattern = renamePattern?.value?.trim() || "{name}";
-  
-  let safeBase = pattern.replaceAll("{name}", baseName);
 
-  safeBase = safeBase.replace(/\{rand[ao]m(?::(\d+))?\}/g, (match, digits) => {
-    const len = digits ? parseInt(digits, 10) : 6;
-    return generateRandomString(len);
-  });
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const isConvertOn = enableConvertCheck?.checked ?? true;
 
-  safeBase = safeBase.replace(/\{num(?::(\d+))?\}/g, (match, digits) => {
-    const numValue = index + 1;
-    if (digits) {
-      const targetLength = parseInt(digits, 10);
-      return String(numValue).padStart(targetLength, "0");
-    }
-    return String(numValue);
-  });
+  let safeBase = baseName;
 
-  safeBase = safeBase.replace(/[\\/:*?"<>|]/g, "-");
+  if (isRenameOn) {
+    const pattern = renamePattern?.value?.trim() || "{name}";
+    safeBase = pattern.replaceAll("{name}", baseName);
 
-  const ext = (mimeType && extensions[mimeType]) ? extensions[mimeType] : (originalExt || "bin");
+    safeBase = safeBase.replace(/\{rand[ao]m(?::(\d+))?\}/g, (match, digits) => {
+      const len = digits ? parseInt(digits, 10) : 6;
+      return generateRandomString(len);
+    });
+
+    safeBase = safeBase.replace(/\{num(?::(\d+))?\}/g, (match, digits) => {
+      const numValue = index + 1;
+      if (digits) {
+        const targetLength = parseInt(digits, 10);
+        return String(numValue).padStart(targetLength, "0");
+      }
+      return String(numValue);
+    });
+
+    safeBase = safeBase.replace(/[\\/:*?"<>|]/g, "-");
+  }
+
+  const ext = (isConvertOn && mimeType && extensions[mimeType])
+    ? extensions[mimeType]
+    : (originalExt || "bin");
+
   return `${safeBase}.${ext}`;
 }
 

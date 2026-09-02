@@ -59,58 +59,75 @@
               <h2 data-i18n="settings">設定</h2>
             </div>
 
-            <!-- セクション 1: 画像変換設定 -->
+            <!-- セクション 1: 画像変換 ＆ リネーム設定 -->
             <div class="settings-section">
-              <div class="section-label">画像変換</div>
-
-              <label class="field">
-                <span data-i18n="outputFormat">出力形式</span>
-                <select id="formatSelect">
-                  <option value="image/jpeg">JPEG</option>
-                  <option value="image/webp" selected>WebP (推奨・高圧縮)</option>
-                  <option value="image/jxl">JXL</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span data-i18n="quality">品質</span>
-                  <span style="font-size: 11px; color: var(--muted);">推奨: 80〜90</span>
-                </div>
-                <div class="range-row">
-                  <input id="qualityRange" type="range" min="1" max="100" value="85">
-                  <output id="qualityOutput">85</output>
-                </div>
-              </label>
-
-              <label class="field">
-                <span data-i18n="renameRule">リネーム規則</span>
-                <div class="input-clear-wrapper" style="position: relative; width: 100%;">
-                  <input id="renamePattern" type="text" value="{name}" spellcheck="false" style="padding-right: 28px;">
-                  <button type="button" id="clearRenamePattern" title="入力をクリア">&times;</button>
-                </div>
+              <!-- 変換トグル -->
+              <div class="toggle-control-group">
+                <label class="check-label-row">
+                  <input type="checkbox" id="enableConvertCheck" checked>
+                  <span class="section-label-text">画像を変換する</span>
+                </label>
                 
-                <!-- リアルタイムプレビューチップ -->
-                <div class="preview-chip" id="renamePreviewChip">
-                  <span style="color: var(--muted); font-size: 11px;">プレビュー:</span>
-                  <span id="renamePreviewText" style="font-weight: 700; color: #a5b4fc; font-family: monospace;">sample.webp</span>
-                </div>
+                <div id="convertSettingsArea" class="toggle-sub-area">
+                  <label class="field">
+                    <span data-i18n="outputFormat">出力形式</span>
+                    <select id="formatSelect">
+                      <option value="image/jpeg">JPEG</option>
+                      <option value="image/webp" selected>WebP (推奨・高圧縮)</option>
+                      <option value="image/jxl">JXL</option>
+                    </select>
+                  </label>
 
-                <div class="pattern-helpers" style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
-                  <button type="button" class="tag-button" data-insert="{name}" data-i18n="originalName">元ファイル名</button>
-                  <button type="button" class="tag-button" data-insert="{num:2}" data-i18n="seq01">連番 (01)</button>
-                  <button type="button" class="tag-button" data-insert="{num:3}" data-i18n="seq001">連番 (001)</button>
-                  <button type="button" class="tag-button" data-insert="{randam:6}" data-i18n="random6">ランダム (6文字)</button>
+                  <label class="field" style="margin-top: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span data-i18n="quality">品質</span>
+                      <span style="font-size: 11px; color: var(--muted);">推奨: 80〜90</span>
+                    </div>
+                    <div class="range-row">
+                      <input id="qualityRange" type="range" min="1" max="100" value="85">
+                      <output id="qualityOutput">85</output>
+                    </div>
+                  </label>
                 </div>
-              </label>
+              </div>
 
-              <!-- ローカル変換アクション -->
+              <!-- リネームトグル -->
+              <div class="toggle-control-group" style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); padding-top: 10px;">
+                <label class="check-label-row">
+                  <input type="checkbox" id="enableRenameCheck" checked>
+                  <span class="section-label-text">ファイル名をリネームする</span>
+                </label>
+
+                <div id="renameSettingsArea" class="toggle-sub-area">
+                  <label class="field">
+                    <div class="input-clear-wrapper" style="position: relative; width: 100%;">
+                      <input id="renamePattern" type="text" value="{name}" spellcheck="false" style="padding-right: 28px;">
+                      <button type="button" id="clearRenamePattern" title="入力をクリア">&times;</button>
+                    </div>
+                    
+                    <!-- リアルタイムプレビューチップ -->
+                    <div class="preview-chip" id="renamePreviewChip">
+                      <span style="color: var(--muted); font-size: 11px;">プレビュー:</span>
+                      <span id="renamePreviewText" style="font-weight: 700; color: #a5b4fc; font-family: monospace;">sample.webp</span>
+                    </div>
+
+                    <div class="pattern-helpers" style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
+                      <button type="button" class="tag-button" data-insert="{name}" data-i18n="originalName">元ファイル名</button>
+                      <button type="button" class="tag-button" data-insert="{num:2}" data-i18n="seq01">連番 (01)</button>
+                      <button type="button" class="tag-button" data-insert="{num:3}" data-i18n="seq001">連番 (001)</button>
+                      <button type="button" class="tag-button" data-insert="{randam:6}" data-i18n="random6">ランダム (6文字)</button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- ローカル保存アクション -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
                 <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">
-                  📥 変換して保存
+                  📥 ダウンロード
                 </button>
                 <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">
-                  ⚙️ 変換だけする
+                  ⚙️ 画面内に保持
                 </button>
               </div>
             </div>
@@ -192,19 +209,11 @@
                 </div>
               </details>
 
-              <!-- アップロード Primary アクションボタン群 -->
+              <!-- アップロード Primary アクションボタン（たった 1 つに集約！） -->
               <div class="action-buttons-group" style="margin-top: 14px; display: flex; flex-direction: column; gap: 6px;">
                 <button class="primary-button upload-primary-cta" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload" style="font-size: 14px; min-height: 44px;">
-                  🟩 変換してアップロード
+                  🟩 アップロード
                 </button>
-                <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                  <button class="ghost-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal" style="font-size: 12px; min-height: 34px;">
-                    そのままアップロード
-                  </button>
-                  <button class="ghost-button" id="uploadRenameButton" type="button" disabled style="display: none;">
-                    リネームだけしてアップロード
-                  </button>
-                </div>
               </div>
 
               <div class="metadata-warning" style="margin-top: 8px; border-color: rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.05); padding: 8px 10px; border-radius: 6px;">
