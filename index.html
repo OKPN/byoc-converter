@@ -136,7 +136,7 @@
             <div class="settings-section" style="border-top: 1px solid var(--border); padding-top: 16px;">
               <div class="section-label" style="color: #34d399;">☁️ Cloudflare 共有</div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px;">
                 <label class="field">
                   <span data-i18n="retentionPeriod">保存期間</span>
                   <select id="tempTtlSelect">
@@ -151,6 +151,13 @@
                   <span><span data-i18n="tempPasswordLabel">🔑 閲覧パスワード</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
                   <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off">
                 </label>
+              </div>
+
+              <!-- アップロード Primary アクションボタン（メイン導線としてアコーディオンの上に配置！） -->
+              <div class="action-buttons-group" style="margin-top: 8px; margin-bottom: 4px; display: flex; flex-direction: column; gap: 6px;">
+                <button class="primary-button upload-primary-cta" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload" style="font-size: 14px; min-height: 44px;">
+                  🟩 変換してアップロード
+                </button>
               </div>
 
               <!-- 安全な Cloudflare 接続情報アコーディオン -->
@@ -208,13 +215,6 @@
                   </div>
                 </div>
               </details>
-
-              <!-- アップロード Primary アクションボタン（たった 1 つに集約！） -->
-              <div class="action-buttons-group" style="margin-top: 14px; display: flex; flex-direction: column; gap: 6px;">
-                <button class="primary-button upload-primary-cta" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload" style="font-size: 14px; min-height: 44px;">
-                  🟩 アップロード
-                </button>
-              </div>
 
               <div class="metadata-warning" style="margin-top: 8px; border-color: rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.05); padding: 8px 10px; border-radius: 6px;">
                 <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #94a3b8; font-size: 11px; line-height: 1.4; margin: 0;">
