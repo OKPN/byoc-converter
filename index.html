@@ -59,53 +59,74 @@
               <h2 data-i18n="settings">設定</h2>
             </div>
 
-            <label class="field">
-              <span data-i18n="outputFormat">出力形式</span>
-              <select id="formatSelect">
-                <option value="image/jpeg">JPEG</option>
-                <option value="image/webp" selected>WebP</option>
-                <option value="image/jxl">JXL</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span data-i18n="quality">品質</span>
-              <div class="range-row">
-                <input id="qualityRange" type="range" min="1" max="100" value="85">
-                <output id="qualityOutput">85</output>
+            <!-- グループ 1: 🖼️ 画像変換設定 -->
+            <div class="settings-group-card">
+              <div class="group-header">
+                <span class="group-title">🖼️ 画像変換設定</span>
               </div>
-            </label>
 
-            <label class="field">
-              <span data-i18n="renameRule">リネーム規則</span>
-              <div class="input-clear-wrapper" style="position: relative; width: 100%;">
-                <input id="renamePattern" type="text" value="{name}" spellcheck="false" style="padding-right: 28px;">
-                <button type="button" id="clearRenamePattern" title="入力をクリア">&times;</button>
-              </div>
-              <div class="pattern-helpers" style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
-                <button type="button" class="tag-button" data-insert="{name}" data-i18n="originalName">元ファイル名</button>
-                <button type="button" class="tag-button" data-insert="{num:2}" data-i18n="seq01">連番 (01)</button>
-                <button type="button" class="tag-button" data-insert="{num:3}" data-i18n="seq001">連番 (001)</button>
-                <button type="button" class="tag-button" data-insert="{randam:6}" data-i18n="random6">ランダム (6文字)</button>
-              </div>
-            </label>
+              <label class="field">
+                <span data-i18n="outputFormat">出力形式</span>
+                <select id="formatSelect">
+                  <option value="image/jpeg">JPEG</option>
+                  <option value="image/webp" selected>WebP (推奨・高圧縮)</option>
+                  <option value="image/jxl">JXL</option>
+                </select>
+              </label>
 
-            <div class="action-buttons-group" style="margin-top: 20px;">
-              <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">変換してダウンロード</button>
-              <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">変換だけする</button>
-              <div style="margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-                <button class="ghost-button" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload">変換してアップロード</button>
-                <button class="ghost-button" id="uploadRenameButton" type="button" disabled data-i18n="btnUploadRename">リネームだけしてアップロード</button>
-                <button class="ghost-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal">そのままアップロード</button>
+              <label class="field">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span data-i18n="quality">品質</span>
+                  <span style="font-size: 11px; color: var(--muted);">推奨: 80〜90</span>
+                </div>
+                <div class="range-row">
+                  <input id="qualityRange" type="range" min="1" max="100" value="85">
+                  <output id="qualityOutput">85</output>
+                </div>
+              </label>
+
+              <label class="field">
+                <span data-i18n="renameRule">リネーム規則</span>
+                <div class="input-clear-wrapper" style="position: relative; width: 100%;">
+                  <input id="renamePattern" type="text" value="{name}" spellcheck="false" style="padding-right: 28px;">
+                  <button type="button" id="clearRenamePattern" title="入力をクリア">&times;</button>
+                </div>
+                
+                <!-- リアルタイムプレビューチップ -->
+                <div class="preview-chip" id="renamePreviewChip" style="margin-top: 6px; font-size: 12px; padding: 6px 10px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 6px; color: var(--text); display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--muted); font-size: 11px;">プレビュー:</span>
+                  <span id="renamePreviewText" style="font-weight: 700; color: #a5b4fc; font-family: monospace;">sample.webp</span>
+                </div>
+
+                <div class="pattern-helpers" style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" class="tag-button" data-insert="{name}" data-i18n="originalName">元ファイル名</button>
+                  <button type="button" class="tag-button" data-insert="{num:2}" data-i18n="seq01">連番 (01)</button>
+                  <button type="button" class="tag-button" data-insert="{num:3}" data-i18n="seq001">連番 (001)</button>
+                  <button type="button" class="tag-button" data-insert="{randam:6}" data-i18n="random6">ランダム (6文字)</button>
+                </div>
+              </label>
+
+              <!-- ローカル変換アクション（横並び 2 カラム） -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+                <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload" style="font-size: 12px; min-height: 40px;">
+                  📥 変換して保存
+                </button>
+                <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly" style="font-size: 12px; min-height: 40px;">
+                  ⚙️ 変換だけする
+                </button>
               </div>
             </div>
 
-            <!-- アップロードボタン群の下に配置した「おまけ設定」領域 -->
-            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 12px;">
-              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <label class="field" style="padding: 0; flex: 1; min-width: 140px;">
+            <!-- グループ 2: ☁️ Cloudflare 共有設定 -->
+            <div class="settings-group-card" style="margin-top: 14px;">
+              <div class="group-header">
+                <span class="group-title">☁️ Cloudflare 共有設定</span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <label class="field" style="padding: 0;">
                   <span data-i18n="retentionPeriod">保存期間</span>
-                  <select id="tempTtlSelect" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 8px; font-size: 13px; outline: none;">
+                  <select id="tempTtlSelect" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 8px; font-size: 12px; outline: none;">
                     <option value="3600" data-i18n="ttl1h">1時間 (1時間後消滅)</option>
                     <option value="43200" data-i18n="ttl12h">12時間 (12時間後消滅)</option>
                     <option value="86400" data-i18n="ttl1d">1日間 (24時間後消滅)</option>
@@ -113,71 +134,86 @@
                     <option value="604800" data-i18n="ttl7d">7日間 (168時間後消滅)</option>
                   </select>
                 </label>
-                <label class="field" style="padding: 0; flex: 1; min-width: 140px;">
+                <label class="field" style="padding: 0;">
                   <span><span data-i18n="tempPasswordLabel">🔑 閲覧パスワード</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 10px; font-size: 13px; outline: none;">
+                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 10px; font-size: 12px; outline: none;">
                 </label>
               </div>
 
               <!-- 安全な Cloudflare 接続情報アコーディオン -->
-              <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion">
-                <summary data-i18n="cfTitle">☁️ Cloudflare 情報</summary>
-                <div class="settings-content" style="padding: 14px 0 4px; display: flex; flex-direction: column; gap: 10px;">
-                  <label class="field">
+              <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion" style="margin-top: 6px;">
+                <summary data-i18n="cfTitle">☁️ Cloudflare 接続設定</summary>
+                <div class="settings-content" style="padding: 12px 0 4px; display: flex; flex-direction: column; gap: 8px;">
+                  <label class="field" style="padding: 0;">
                     <span><span data-i18n="cfEndpointLabel">Worker エンドポイント URL</span> <span style="color: var(--danger);">*</span></span>
                     <input id="cfEndpoint" type="url" placeholder="https://my-worker.my-name.workers.dev" spellcheck="false" autocomplete="off">
-                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfEndpointSub">自分の Cloudflare Worker の URL</span>
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfEndpointSub">自分の Cloudflare Worker の URL</span>
                   </label>
-                  <label class="field">
+                  <label class="field" style="padding: 0;">
                     <span><span data-i18n="cfTokenLabel">API トークン</span> <span style="color: var(--danger);">*</span></span>
                     <input id="cfToken" type="password" placeholder="your-secret-token" spellcheck="false" autocomplete="off">
-                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
                   </label>
-                  <label class="field">
+                  <label class="field" style="padding: 0;">
                     <span><span data-i18n="cfDomainLabel">直リンク配信ドメイン</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
                     <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
-                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
+                    <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
                   </label>
                   <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                    <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 90px;" data-i18n="btnSave">保存する</button>
-                    <button class="ghost-button" id="cfShareQrButton" type="button" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホへ共有</button>
-                    <button class="ghost-button" id="cfBackupUrlButton" type="button" title="PINコードで暗号化したバックアップURLをコピー" data-i18n="btnPinBackup">🔗 PIN付きバックアップURL</button>
-                    <a href="https://github.com/OKPN/byoc-worker" target="_blank" rel="noopener noreferrer" class="ghost-button" id="cfWorkerGithubLink" style="display: inline-flex; align-items: center; font-size: 12px; text-decoration: none;" title="バックエンド Worker のソースコードと設定手順">byoc-worker ↗</a>
-                    <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" class="ghost-button" id="cfDashboardLink" style="display: inline-flex; align-items: center; font-size: 12px; text-decoration: none;">Cloudflare ↗</a>
-                    <button class="ghost-button danger-button" id="cfClearButton" type="button" data-i18n="btnClear">クリア</button>
+                    <button class="primary-button" id="cfSaveButton" type="button" style="flex: 1; min-width: 80px; min-height: 34px; font-size: 12px;" data-i18n="btnSave">保存する</button>
+                    <button class="ghost-button" id="cfShareQrButton" type="button" style="min-height: 34px; font-size: 11px;" title="別端末へ可視光QRスキャン共有" data-i18n="btnShareQr">📱 スマホ共有</button>
+                    <button class="ghost-button" id="cfBackupUrlButton" type="button" style="min-height: 34px; font-size: 11px;" title="PINコードで暗号化したバックアップURLをコピー" data-i18n="btnPinBackup">🔗 PINバックアップ</button>
+                    <button class="ghost-button danger-button" id="cfClearButton" type="button" style="min-height: 34px; font-size: 11px;" data-i18n="btnClear">クリア</button>
                   </div>
-                  <div id="cfStatus" style="font-size: 12px; min-height: 16px;"></div>
+                  <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; font-size: 11px; margin-top: 2px;">
+                    <a href="https://github.com/OKPN/byoc-worker" target="_blank" rel="noopener noreferrer" style="color: #818cf8; text-decoration: none;">byoc-worker ↗</a>
+                    <span style="color: var(--border);">•</span>
+                    <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" style="color: #818cf8; text-decoration: none;">Cloudflare ↗</a>
+                  </div>
+                  <div id="cfStatus" style="font-size: 11px; min-height: 14px;"></div>
                 </div>
               </details>
 
-              <!-- 📡 投稿用 API アコーディオン（Cloudflare情報と同デザイン） -->
-              <details class="settings-accordion cf-settings-accordion" id="dedicatedUploadAccordion" style="margin-top: 8px;">
-                <summary>📡 投稿用 API</summary>
-                <div class="settings-content" style="padding: 14px 0 4px; display: flex; flex-direction: column; gap: 10px;">
-                  <span style="font-size: 11px; color: var(--muted); line-height: 1.5;">
-                    外部アプリやスクリプトから直接画像を投稿してURLを取得できる軽量APIです。投稿専用トークン（<code>UPLOAD_TOKEN</code>）を設定すると、投稿権限のみが付与され、ファイル一覧の閲覧・削除は遮断（401）される安全な運用が可能です。
+              <!-- 📡 投稿用 API アコーディオン -->
+              <details class="settings-accordion cf-settings-accordion" id="dedicatedUploadAccordion" style="margin-top: 6px;">
+                <summary>📡 投稿用 API (外部スクリプト連携)</summary>
+                <div class="settings-content" style="padding: 12px 0 4px; display: flex; flex-direction: column; gap: 8px;">
+                  <span style="font-size: 11px; color: var(--muted); line-height: 1.4;">
+                    外部アプリやスクリプトから直接画像を投稿してURLを取得できる軽量APIです。
                   </span>
-                  <label class="field">
-                    <span>投稿専用トークン (UPLOAD_TOKEN) <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                    <input id="cfUploadToken" type="password" placeholder="your-upload-token" spellcheck="false" autocomplete="off">
-                    <span style="font-size: 11px; color: var(--muted); margin-top: 3px;">Workerに設定した UPLOAD_TOKEN を入力してください</span>
+                  <label class="field" style="padding: 0;">
+                    <span style="font-size: 11px;">投稿専用トークン (UPLOAD_TOKEN) <span style="color: var(--muted); font-size: 10px;">(任意)</span></span>
+                    <input id="cfUploadToken" type="password" placeholder="your-upload-token" spellcheck="false" autocomplete="off" style="height: 34px; font-size: 11px;">
                   </label>
-                  <label class="field">
-                    <span>投稿API エンドポイント URL</span>
-                    <input id="dedicatedUploadApiUrl" type="text" readonly style="font-family: monospace; font-size: 11px; background: #111215;" value="">
+                  <label class="field" style="padding: 0;">
+                    <span style="font-size: 11px;">投稿API エンドポイント URL</span>
+                    <input id="dedicatedUploadApiUrl" type="text" readonly style="font-family: monospace; font-size: 11px; background: #111215; height: 32px;" value="">
                   </label>
                   <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px;">📋 URLをコピー</button>
-                    <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px;">💻 curlコマンド例をコピー</button>
-                    <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" class="ghost-button" style="display: inline-flex; align-items: center; font-size: 11px; padding: 4px 8px; text-decoration: none;" title="Cloudflare ダッシュボードで UPLOAD_TOKEN シークレットを登録">Cloudflare ↗</a>
+                    <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;">📋 URLをコピー</button>
+                    <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;">💻 curl例をコピー</button>
                   </div>
                 </div>
               </details>
 
-              <div class="metadata-warning" style="border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
-                <span class="warning-icon" style="color: #818cf8;">ℹ️</span>
-                <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #c7d2fe; font-size: 11px; line-height: 1.5; margin: 0;">
-                  画像を変換した場合、メタデータの保持に関しては保証できません。Cloudflare KVの仕様上、アップロードは1ファイルにつき<strong style="color: #fff;">最大25MBまで</strong>となります。
+              <!-- アップロード Primary アクションボタン群 -->
+              <div class="action-buttons-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <button class="primary-button upload-primary-cta" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload" style="font-size: 14px; min-height: 44px;">
+                  🟩 変換してアップロード
+                </button>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+                  <button class="ghost-button" id="uploadOriginalButton" type="button" disabled data-i18n="btnUploadOriginal" style="font-size: 12px; min-height: 34px;">
+                    そのままアップロード
+                  </button>
+                  <button class="ghost-button" id="uploadRenameButton" type="button" disabled style="display: none;">
+                    リネームだけしてアップロード
+                  </button>
+                </div>
+              </div>
+
+              <div class="metadata-warning" style="margin-top: 8px; border-color: rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.05); padding: 8px 10px; border-radius: 6px;">
+                <p data-i18n="kvLimitNotice" data-i18n-html="true" style="color: #94a3b8; font-size: 11px; line-height: 1.4; margin: 0;">
+                  ℹ️ Cloudflare KV の仕様上、1ファイル最大 <strong style="color: #fff;">25MB</strong> までとなります。
                 </p>
               </div>
             </div>

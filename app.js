@@ -837,6 +837,7 @@ tempTtlSelect?.addEventListener("change", () => {
 
 renamePattern?.addEventListener("input", () => {
   localStorage.setItem("renamePattern", renamePattern.value.trim());
+  updateRenamePreview();
 });
 
 clearRenamePattern?.addEventListener("click", () => {
@@ -844,7 +845,12 @@ clearRenamePattern?.addEventListener("click", () => {
     renamePattern.value = "";
     renamePattern.focus();
     localStorage.setItem("renamePattern", "");
+    updateRenamePreview();
   }
+});
+
+formatSelect?.addEventListener("change", () => {
+  updateRenamePreview();
 });
 
 document.querySelector(".pattern-helpers")?.addEventListener("click", (event) => {
@@ -853,8 +859,8 @@ document.querySelector(".pattern-helpers")?.addEventListener("click", (event) =>
     const insertText = target.dataset.insert;
     if (!insertText || !renamePattern) return;
 
-    const start = renamePattern.selectionStart;
-    const end = renamePattern.selectionEnd;
+    const start = renamePattern.selectionStart ?? renamePattern.value.length;
+    const end = renamePattern.selectionEnd ?? renamePattern.value.length;
     const text = renamePattern.value;
 
     const newText = text.substring(0, start) + insertText + text.substring(end);
@@ -865,6 +871,7 @@ document.querySelector(".pattern-helpers")?.addEventListener("click", (event) =>
     renamePattern.setSelectionRange(newPos, newPos);
 
     localStorage.setItem("renamePattern", renamePattern.value.trim());
+    updateRenamePreview();
   }
 });
 
@@ -1023,6 +1030,32 @@ function setUiLock(locked) {
   if (locked && uploadAllButton) uploadAllButton.disabled = true;
 }
 
+function updateRenamePreview() {
+  const rawPattern = renamePattern?.value;
+  const pattern = (rawPattern !== undefined && rawPattern !== "") ? rawPattern : "{name}";
+  const ext = extensions[formatSelect?.value || "image/webp"] || "webp";
+  const dummyName = state.files[0] ? state.files[0].name.replace(/\.[^.]+$/, "") : "sample";
+  
+  let previewName = pattern.replaceAll("{name}", dummyName);
+
+  previewName = previewName.replace(/\{rand[ao]m(?::(\d+))?\}/g, (match, digits) => {
+    const len = digits ? parseInt(digits, 10) : 6;
+    return "a8Kx21".slice(0, Math.min(len, 6)).padEnd(len, "x");
+  });
+
+  previewName = previewName.replace(/\{num(?::(\d+))?\}/g, (match, digits) => {
+    const targetLength = digits ? parseInt(digits, 10) : 1;
+    return "1".padStart(targetLength, "0");
+  });
+
+  previewName = previewName.replace(/[\\/:*?"<>|]/g, "-");
+
+  const previewText = document.querySelector("#renamePreviewText");
+  if (previewText) {
+    previewText.textContent = `${previewName}.${ext}`;
+  }
+}
+
 function render() {
   const cfOk = updateCfStatus();
   const hasFiles = state.files.length > 0;
@@ -1036,6 +1069,7 @@ function render() {
 
   updateZipButtonState();
   updateUploadAllButtonState();
+  updateRenamePreview();
 
   if (progressBar) {
     progressBar.value = state.results.length && state.files.length

@@ -237,26 +237,67 @@ h2 {
 }
 
 .field {
+.settings-group-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 16px;
+}
+
+.settings-group-card .group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-group-card .group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.field {
   display: grid;
-  gap: 8px;
-  padding: 0 18px;
+  gap: 6px;
+  padding: 0;
   color: var(--muted);
+  font-size: 13px;
 }
 
 .field select,
-.field input[type="text"] {
+.field input[type="text"],
+.field input[type="url"],
+.field input[type="password"] {
   width: 100%;
-  height: 44px;
+  height: 38px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #17191e;
+  background: #171920;
   color: var(--text);
-  padding: 0 12px;
+  padding: 0 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field select:focus,
+.field input[type="text"]:focus,
+.field input[type="url"]:focus,
+.field input[type="password"]:focus {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .range-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
   gap: 10px;
 }
@@ -264,31 +305,19 @@ h2 {
 .range-row output {
   color: var(--text);
   text-align: right;
+  font-weight: 700;
+  font-size: 13px;
 }
 
 input[type="range"] {
   accent-color: var(--accent);
-}
-
-.check-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 18px;
-  color: var(--text);
-}
-
-.check-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .action-buttons-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
 }
 
 .action-buttons-group > button {
@@ -299,13 +328,17 @@ input[type="range"] {
 .secondary-button,
 .ghost-button,
 .download-button {
-  min-height: 44px;
+  min-height: 40px;
   border: 0;
   border-radius: 6px;
   color: var(--text);
   cursor: pointer;
   font-weight: 700;
-  transition: background 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .result-actions .ghost-button,
@@ -315,22 +348,42 @@ input[type="range"] {
 }
 
 .primary-button {
-  background: var(--accent-strong);
+  background: linear-gradient(135deg, #ff7a1a 0%, #ea580c 100%);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(255, 122, 26, 0.25);
 }
 
 .primary-button:hover:not(:disabled) {
-  background: #ff7315;
+  background: linear-gradient(135deg, #ff8c38 0%, #f97316 100%);
+  box-shadow: 0 6px 16px rgba(255, 122, 26, 0.35);
+  transform: translateY(-1px);
+}
+
+.upload-primary-cta {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+}
+
+.upload-primary-cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
+  transform: translateY(-1px);
 }
 
 .secondary-button {
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 .secondary-button:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
 }
 
 .primary-button:disabled,
@@ -338,19 +391,22 @@ input[type="range"] {
 .ghost-button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+  box-shadow: none;
+  transform: none;
 }
 
 .ghost-button,
 .download-button {
   border: 1px solid var(--border);
-  background: var(--panel-strong);
-  color: var(--muted);
-  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0 12px;
 }
 
 .ghost-button:hover:not(:disabled) {
   color: var(--text);
-  border-color: #555963;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .download-button {
