@@ -1385,52 +1385,43 @@ fileList?.addEventListener("click", async (event) => {
     return;
   }
 
-  // 5. Civitai 転送（リネームは無視して元ファイル名を優先）
+  // 5. Civitai 転送（Cloudflareアップロード不要・直接Civitai投稿画面を開く）
   if (target.classList.contains("civitai-post-btn")) {
     if (isNaN(index) || index < 0 || index >= state.files.length) return;
     const file = state.files[index];
     let result = state.results[index];
 
     target.disabled = true;
-    target.textContent = "転送中...";
+    target.textContent = "処理中...";
 
     try {
-      // Civitai用：リネームを無視して元ファイル名ベースで確実にアップロード
-      if (!result || !result.isUploaded) {
-        // 元ファイル名で変換
-        const isConvertOn = enableConvertCheck?.checked ?? true;
-        const dotIndex = file.name.lastIndexOf(".");
-        const fileExt = dotIndex > 0 ? file.name.slice(dotIndex + 1).toLowerCase() : "";
-        const isImage = file.type?.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(fileExt);
-
-        let finalName = file.name;
-        if (isConvertOn && isImage) {
-          const baseName = dotIndex > 0 ? file.name.slice(0, dotIndex) : file.name;
-          const targetExt = extensions[formatSelect?.value || "image/webp"] || "webp";
-          finalName = `${baseName}.${targetExt}`;
-        }
-
-        if (!result) {
-          result = await convertImage(file, index);
-          result.name = finalName;
-          state.results[index] = result;
-        } else {
-          result.name = finalName;
-        }
-
-        const success = await uploadImage(result);
-        if (!success || !result.proxyUrl) {
-          throw new Error("Cloudflare への一時アップロードに失敗しました。接続設定をご確認ください。");
-        }
-        await fetchAndRenderR2Files();
+      // 1. 設定に従いローカル変換（リネームは無視して元ファイル名を維持）
+      if (!result) {
+        result = await convertImage(file, index);
+        state.results[index] = result;
       }
 
-      const mediaUrl = result.proxyUrl;
-      const mediaName = file.name; // 元ファイル名を渡す
-      openCivitaiIntent(mediaUrl, mediaName);
+      // 2. 変換後の画像をクリップボードにコピー（ブラウザが対応していれば画像データを直接クリップボードへ）
+      if (result.blob && navigator.clipboard && window.ClipboardItem) {
+        try {
+          const mime = result.blob.type || "image/png";
+          if (mime === "image/png" || mime === "image/jpeg") {
+            await navigator.clipboard.write([
+              new ClipboardItem({ [mime]: result.blob })
+            ]);
+          }
+        } catch (clipErr) {
+          console.warn("ClipboardItem write skipped:", clipErr);
+        }
+      }
+
+      // 3. Civitai の投稿作成ページを直接開く（Cloudflare 一切不要！）
+      const civitaiCreateUrl = "https://civitai.com/posts/create";
+      window.open(civitaiCreateUrl, "_blank", "noopener,noreferrer");
+
     } catch (e) {
       console.error("Civitai post error:", e);
-      alert(e.message);
+      alert("Civitai 画面の起動に失敗しました: " + e.message);
     } finally {
       target.disabled = false;
       target.textContent = "🎨 Civitai";
