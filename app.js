@@ -1234,8 +1234,8 @@ function render() {
           ${warnNotice}
         </div>
         <div class="item-actions-col" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-          ${result ? createActionHtml(result) : ""}
-          <button type="button" class="ghost-button delete-button danger-button" data-index="${index}" aria-label="削除" style="min-width: 28px; height: 28px; padding: 0 6px; font-size: 14px; line-height: 1;">&times;</button>
+          ${createCardActionHtml(file, result, index)}
+          <button type="button" class="ghost-button delete-button danger-button" data-index="${index}" aria-label="削除" title="一覧から削除" style="min-width: 28px; height: 28px; padding: 0 6px; font-size: 14px; line-height: 1;">&times;</button>
         </div>
       `;
       fileList.append(item);
@@ -1244,32 +1244,31 @@ function render() {
 }
 
 function renderResults() {
-  // 後方互換性のためのエイリアス
   render();
 }
 
-function createActionHtml(result) {
+function createCardActionHtml(file, result, index) {
   const lang = getAppLanguage();
   const dict = i18nDict[lang] || i18nDict.ja;
-  const downloadText = lang === "en" ? "Download" : "ダウンロード";
-  const uploadText = lang === "en" ? "Upload" : "アップロード";
-  const downloadBtn = `<button type="button" class="primary-button download-single-btn" data-url="${escapeHtml(result.url)}" data-name="${escapeHtml(result.name)}">${downloadText}</button>`;
 
-  if (result.isUploading) {
-    return `<span class="status-text saving">${lang === "en" ? "Uploading..." : "アップロード中..."}</span>`;
+  if (result && result.isUploading) {
+    return `<span class="status-text saving" style="font-size: 11px;">アップロード中...</span>`;
   }
-  if (result.isUploaded) {
+
+  if (result && result.isUploaded) {
     return `
-      <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly>
-      <button type="button" class="ghost-button copy-button">${escapeHtml(dict.copyUrl)}</button>
-      ${downloadBtn}
-      <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-url="${escapeHtml(result.proxyUrl)}" data-name="${escapeHtml(result.name)}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
+      <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly style="width: 140px; font-size: 11px; height: 28px; padding: 0 6px;">
+      <button type="button" class="ghost-button copy-button" style="font-size: 11px; padding: 0 8px; height: 28px;">${escapeHtml(dict.copyUrl)}</button>
+      <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="ダウンロード">📥 DL</button>
+      <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;" data-index="${index}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
     `;
   }
+
+  // 待機中または変換完了（未アップロード）時
   return `
-    <button type="button" class="ghost-button upload-button">${uploadText}</button>
-    ${downloadBtn}
-    <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-name="${escapeHtml(result.name)}" title="一時アップロードして Civitai の投稿画面を開く">🎨 Civitai</button>
+    <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="このファイルだけ変換してダウンロード">📥 DL</button>
+    <button type="button" class="ghost-button upload-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="このファイルだけ変換してCloudflareへアップロード">☁️ UP</button>
+    <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;" data-index="${index}" title="リネームを無視して変換・一時共有し、Civitaiの投稿画面を開く">🎨 Civitai</button>
   `;
 }
 
@@ -1278,9 +1277,10 @@ fileList?.addEventListener("click", async (event) => {
   const card = target.closest(".unified-file-card");
   if (!card) return;
 
+  const index = Number(target.dataset.index);
+
   // 1. 削除ボタン
   if (target.classList.contains("delete-button")) {
-    const index = Number(target.dataset.index);
     if (!isNaN(index) && index >= 0 && index < state.files.length) {
       const removedResult = state.results[index];
       if (removedResult) {
@@ -1294,44 +1294,117 @@ fileList?.addEventListener("click", async (event) => {
     return;
   }
 
-  // 2. 変換後アクション
-  const resultId = card.dataset.id;
-  const result = state.results.find(r => r && r.id === resultId);
-  if (!result) return;
-
+  // 2. 単体ダウンロード
   if (target.classList.contains("download-single-btn")) {
-    const url = target.dataset.url || result.url;
-    const name = target.dataset.name || result.name;
-    if (url && name) downloadUrl(url, name);
+    if (isNaN(index) || index < 0 || index >= state.files.length) return;
+    const file = state.files[index];
+    let result = state.results[index];
+
+    target.disabled = true;
+    target.textContent = "...";
+    try {
+      if (!result) {
+        result = await convertImage(file, index);
+        state.results[index] = result;
+      }
+      downloadUrl(result.url, result.name);
+    } catch (e) {
+      console.error(e);
+      alert("ダウンロードに失敗しました: " + e.message);
+    } finally {
+      target.disabled = false;
+      target.textContent = "📥 DL";
+      render();
+    }
     return;
   }
 
-  if (target.classList.contains("upload-button")) {
-    await uploadImage(result);
+  // 3. 単体アップロード
+  if (target.classList.contains("upload-single-btn")) {
+    if (isNaN(index) || index < 0 || index >= state.files.length) return;
+    const file = state.files[index];
+    let result = state.results[index];
+
+    target.disabled = true;
+    target.textContent = "UP中...";
+    try {
+      if (!result) {
+        result = await convertImage(file, index);
+        state.results[index] = result;
+      }
+      const success = await uploadImage(result);
+      if (success) {
+        await fetchAndRenderR2Files();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("アップロードに失敗しました: " + e.message);
+    } finally {
+      render();
+    }
     return;
   }
 
+  // 4. URL コピー
   if (target.classList.contains("copy-button")) {
+    const result = state.results[index];
     const inputUrl = card.querySelector(".url-output")?.value;
-    const urlToCopy = result.proxyUrl || inputUrl || target.dataset.url;
+    const urlToCopy = result?.proxyUrl || inputUrl;
     await copyToClipboard(urlToCopy, target);
     return;
   }
 
+  // 5. Civitai 転送（リネームは無視して元ファイル名を優先）
   if (target.classList.contains("civitai-post-btn")) {
-    if (!result.isUploaded) {
-      target.disabled = true;
-      target.textContent = "アップロード中...";
-      const success = await uploadImage(result);
-      if (!success || !result.proxyUrl) {
-        target.disabled = false;
-        target.textContent = "🎨 Civitai";
-        return;
+    if (isNaN(index) || index < 0 || index >= state.files.length) return;
+    const file = state.files[index];
+    let result = state.results[index];
+
+    target.disabled = true;
+    target.textContent = "転送中...";
+
+    try {
+      // Civitai用：リネームを無視して元ファイル名ベースで確実にアップロード
+      if (!result || !result.isUploaded) {
+        // 元ファイル名で変換
+        const isConvertOn = enableConvertCheck?.checked ?? true;
+        const dotIndex = file.name.lastIndexOf(".");
+        const fileExt = dotIndex > 0 ? file.name.slice(dotIndex + 1).toLowerCase() : "";
+        const isImage = file.type?.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(fileExt);
+
+        let finalName = file.name;
+        if (isConvertOn && isImage) {
+          const baseName = dotIndex > 0 ? file.name.slice(0, dotIndex) : file.name;
+          const targetExt = extensions[formatSelect?.value || "image/webp"] || "webp";
+          finalName = `${baseName}.${targetExt}`;
+        }
+
+        if (!result) {
+          result = await convertImage(file, index);
+          result.name = finalName;
+          state.results[index] = result;
+        } else {
+          result.name = finalName;
+        }
+
+        const success = await uploadImage(result);
+        if (!success || !result.proxyUrl) {
+          throw new Error("Cloudflare への一時アップロードに失敗しました。接続設定をご確認ください。");
+        }
+        await fetchAndRenderR2Files();
       }
+
+      const mediaUrl = result.proxyUrl;
+      const mediaName = file.name; // 元ファイル名を渡す
+      openCivitaiIntent(mediaUrl, mediaName);
+    } catch (e) {
+      console.error("Civitai post error:", e);
+      alert(e.message);
+    } finally {
+      target.disabled = false;
+      target.textContent = "🎨 Civitai";
+      render();
     }
-    const mediaUrl = result.proxyUrl || target.dataset.url;
-    const name = result.name || target.dataset.name;
-    openCivitaiIntent(mediaUrl, name);
   }
 });
 
