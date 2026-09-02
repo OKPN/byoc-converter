@@ -59,11 +59,9 @@
               <h2 data-i18n="settings">設定</h2>
             </div>
 
-            <!-- グループ 1: 🖼️ 画像変換設定 -->
-            <div class="settings-group-card">
-              <div class="group-header">
-                <span class="group-title">🖼️ 画像変換設定</span>
-              </div>
+            <!-- セクション 1: 画像変換設定 -->
+            <div class="settings-section">
+              <div class="section-label">画像変換</div>
 
               <label class="field">
                 <span data-i18n="outputFormat">出力形式</span>
@@ -93,7 +91,7 @@
                 </div>
                 
                 <!-- リアルタイムプレビューチップ -->
-                <div class="preview-chip" id="renamePreviewChip" style="margin-top: 6px; font-size: 12px; padding: 6px 10px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 6px; color: var(--text); display: flex; align-items: center; gap: 6px;">
+                <div class="preview-chip" id="renamePreviewChip">
                   <span style="color: var(--muted); font-size: 11px;">プレビュー:</span>
                   <span id="renamePreviewText" style="font-weight: 700; color: #a5b4fc; font-family: monospace;">sample.webp</span>
                 </div>
@@ -106,27 +104,25 @@
                 </div>
               </label>
 
-              <!-- ローカル変換アクション（横並び 2 カラム） -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
-                <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload" style="font-size: 12px; min-height: 40px;">
+              <!-- ローカル変換アクション -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
+                <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">
                   📥 変換して保存
                 </button>
-                <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly" style="font-size: 12px; min-height: 40px;">
+                <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">
                   ⚙️ 変換だけする
                 </button>
               </div>
             </div>
 
-            <!-- グループ 2: ☁️ Cloudflare 共有設定 -->
-            <div class="settings-group-card" style="margin-top: 14px;">
-              <div class="group-header">
-                <span class="group-title">☁️ Cloudflare 共有設定</span>
-              </div>
+            <!-- セクション 2: Cloudflare 共有設定 -->
+            <div class="settings-section" style="border-top: 1px solid var(--border); padding-top: 16px;">
+              <div class="section-label" style="color: #34d399;">☁️ Cloudflare 共有</div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
-                <label class="field" style="padding: 0;">
+                <label class="field">
                   <span data-i18n="retentionPeriod">保存期間</span>
-                  <select id="tempTtlSelect" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 8px; font-size: 12px; outline: none;">
+                  <select id="tempTtlSelect">
                     <option value="3600" data-i18n="ttl1h">1時間 (1時間後消滅)</option>
                     <option value="43200" data-i18n="ttl12h">12時間 (12時間後消滅)</option>
                     <option value="86400" data-i18n="ttl1d">1日間 (24時間後消滅)</option>
@@ -134,9 +130,9 @@
                     <option value="604800" data-i18n="ttl7d">7日間 (168時間後消滅)</option>
                   </select>
                 </label>
-                <label class="field" style="padding: 0;">
+                <label class="field">
                   <span><span data-i18n="tempPasswordLabel">🔑 閲覧パスワード</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
-                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off" style="width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 6px; background: #17191e; color: var(--text); padding: 0 10px; font-size: 12px; outline: none;">
+                  <input id="tempPasswordInput" type="password" placeholder="合言葉を設定" spellcheck="false" autocomplete="off">
                 </label>
               </div>
 
@@ -144,17 +140,17 @@
               <details class="settings-accordion cf-settings-accordion" id="cfSettingsAccordion" style="margin-top: 6px;">
                 <summary data-i18n="cfTitle">☁️ Cloudflare 接続設定</summary>
                 <div class="settings-content" style="padding: 12px 0 4px; display: flex; flex-direction: column; gap: 8px;">
-                  <label class="field" style="padding: 0;">
+                  <label class="field">
                     <span><span data-i18n="cfEndpointLabel">Worker エンドポイント URL</span> <span style="color: var(--danger);">*</span></span>
                     <input id="cfEndpoint" type="url" placeholder="https://my-worker.my-name.workers.dev" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfEndpointSub">自分の Cloudflare Worker の URL</span>
                   </label>
-                  <label class="field" style="padding: 0;">
+                  <label class="field">
                     <span><span data-i18n="cfTokenLabel">API トークン</span> <span style="color: var(--danger);">*</span></span>
                     <input id="cfToken" type="password" placeholder="your-secret-token" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfTokenSub">Worker の認証トークン（不正利用防止）</span>
                   </label>
-                  <label class="field" style="padding: 0;">
+                  <label class="field">
                     <span><span data-i18n="cfDomainLabel">直リンク配信ドメイン</span> <span style="color: var(--muted); font-size: 11px;">(任意)</span></span>
                     <input id="cfDirectDomain" type="url" placeholder="https://files.my-domain.com" spellcheck="false" autocomplete="off">
                     <span style="font-size: 11px; color: var(--muted); margin-top: 2px;" data-i18n="cfDomainSub">未入力の場合は Worker URL をそのまま使用</span>
@@ -181,11 +177,11 @@
                   <span style="font-size: 11px; color: var(--muted); line-height: 1.4;">
                     外部アプリやスクリプトから直接画像を投稿してURLを取得できる軽量APIです。
                   </span>
-                  <label class="field" style="padding: 0;">
+                  <label class="field">
                     <span style="font-size: 11px;">投稿専用トークン (UPLOAD_TOKEN) <span style="color: var(--muted); font-size: 10px;">(任意)</span></span>
                     <input id="cfUploadToken" type="password" placeholder="your-upload-token" spellcheck="false" autocomplete="off" style="height: 34px; font-size: 11px;">
                   </label>
-                  <label class="field" style="padding: 0;">
+                  <label class="field">
                     <span style="font-size: 11px;">投稿API エンドポイント URL</span>
                     <input id="dedicatedUploadApiUrl" type="text" readonly style="font-family: monospace; font-size: 11px; background: #111215; height: 32px;" value="">
                   </label>
@@ -197,7 +193,7 @@
               </details>
 
               <!-- アップロード Primary アクションボタン群 -->
-              <div class="action-buttons-group" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+              <div class="action-buttons-group" style="margin-top: 14px; display: flex; flex-direction: column; gap: 6px;">
                 <button class="primary-button upload-primary-cta" id="convertUploadButton" type="button" disabled data-i18n="btnConvertUpload" style="font-size: 14px; min-height: 44px;">
                   🟩 変換してアップロード
                 </button>
