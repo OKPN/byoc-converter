@@ -1433,7 +1433,8 @@ fileList?.addEventListener("click", async (event) => {
           result.name = finalName;
         }
 
-        const success = await uploadImage(result);
+        // Civitai転送用：TTLは超短時間の5分 (300秒) かつパスワード保護なしで一時共有
+        const success = await uploadImage(result, 300, "");
         if (!success || !result.proxyUrl) {
           throw new Error("Cloudflare への一時アップロードに失敗しました。接続設定をご確認ください。");
         }
@@ -1573,7 +1574,7 @@ async function convertImage(file, index = 0) {
 
 // --- アップロード処理 (ユーザーのlocalStorageから動的に送信) ---
 
-async function uploadImage(result) {
+async function uploadImage(result, customTtl = null, customPassword = null) {
   if (!result || !result.blob) return;
 
   if (!updateCfStatus()) {
@@ -1591,9 +1592,9 @@ async function uploadImage(result) {
   renderResults();
 
   try {
-    const ttl = tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200";
+    const ttl = customTtl !== null ? String(customTtl) : (tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200");
     const pwdInput = document.querySelector("#tempPasswordInput");
-    const password = pwdInput ? pwdInput.value.trim() : "";
+    const password = customPassword !== null ? customPassword : (pwdInput ? pwdInput.value.trim() : "");
     const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
 
     const response = await fetch(uploadUrl, {
