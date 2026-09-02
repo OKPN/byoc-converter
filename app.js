@@ -1704,11 +1704,11 @@ async function fetchAndRenderR2Files() {
   const token    = (localStorage.getItem("cfToken") || "").trim();
 
   if (!endpoint || !token) {
-    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted);">${escapeHtml(dict.r2NeedConfig)}</span>`;
+    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted); display: block; text-align: center;">Cloudflare未接続</span>`;
     return;
   }
 
-  r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">${escapeHtml(dict.r2Loading)}</span>`;
+  r2FileList.innerHTML = `<span class="status-text" style="padding: 18px;">${escapeHtml(dict.r2Loading || "読み込み中...")}</span>`;
   try {
     const response = await fetch(getApiUrl("/api/temp-files"), {
       headers: getRequestHeaders(),
@@ -1729,7 +1729,7 @@ async function fetchAndRenderR2Files() {
 
     r2FileList.innerHTML = "";
     if (!publicFiles.length) {
-      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px;">${escapeHtml(dict.r2Empty)}</span>`;
+      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: #38bdf8; font-weight: 600; display: block; text-align: center;">Cloudflare接続成功</span>`;
       return;
     }
 
@@ -1780,8 +1780,7 @@ async function fetchAndRenderR2Files() {
     updateSelectedR2ActionButtonsState();
   } catch (error) {
     console.error("Fetch temp files UI error:", error);
-    const errText = error.message || "一覧の取得に失敗しました。APIトークンを確認してください。";
-    r2FileList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">${escapeHtml(errText)}</span>`;
+    r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: var(--muted); display: block; text-align: center;">Cloudflare未接続</span>`;
     updateSelectedR2ActionButtonsState();
   }
 }
