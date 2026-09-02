@@ -1735,7 +1735,7 @@ async function fetchAndRenderR2Files() {
         </div>
         <div class="result-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <button type="button" class="ghost-button copy-button" data-url="${escapeHtml(file.url)}">${escapeHtml(dict.copyUrl)}</button>
-          <button type="button" class="ghost-button civitai-r2-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-url="${escapeHtml(file.url)}" data-name="${escapeHtml(file.filename)}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
+          ${!file.hasPassword ? `<button type="button" class="ghost-button civitai-r2-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" data-url="${escapeHtml(file.url)}" data-name="${escapeHtml(file.filename)}" title="Civitai の投稿画面を開く">🎨 Civitai</button>` : ""}
           <button type="button" class="ghost-button temp-extend-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.extend24h)}</button>
           <button type="button" class="ghost-button danger-button temp-delete-btn" data-key="${escapeHtml(file.key)}">${escapeHtml(dict.deleteNow)}</button>
         </div>
