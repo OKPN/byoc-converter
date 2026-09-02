@@ -2039,12 +2039,27 @@ civitaiGalleryList?.addEventListener("click", async (event) => {
     const rawUrl = target.dataset.url;
     if (!rawUrl) return;
 
-    const originalText = target.textContent;
     try {
       target.textContent = "解決中...";
-      // 301 リダイレクトを自動追跡して、真の blobs-b2 直リンク URL を取得
-      const res = await fetch(rawUrl);
-      const finalUrl = res.url || rawUrl;
+      
+      // Worker の /api/resolve-url を使って 301 先の真の blobs-b2 直リンク URL を確実に取得
+      const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim().replace(/\/$/, "");
+      let finalUrl = rawUrl;
+      
+      if (endpoint) {
+        const resolveApi = `${endpoint}/api/resolve-url?url=${encodeURIComponent(rawUrl)}`;
+        const res = await fetch(resolveApi);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.url) {
+            finalUrl = data.url;
+          }
+        }
+      } else {
+        const res = await fetch(rawUrl);
+        if (res.url) finalUrl = res.url;
+      }
+
       target.dataset.url = finalUrl; // 次回以降のためにキャッシュ
       await copyToClipboard(finalUrl, target);
     } catch (err) {
