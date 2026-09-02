@@ -2227,6 +2227,10 @@ civitaiGalleryList?.addEventListener("click", async (event) => {
     const rawUrl = target.dataset.url;
     if (!rawUrl) return;
 
+    const lang = getAppLanguage();
+    const dict = i18nDict[lang] || i18nDict.ja;
+    const defaultLabel = dict.copyUrl || "URLコピー";
+
     try {
       target.textContent = "解決中...";
       
@@ -2249,10 +2253,10 @@ civitaiGalleryList?.addEventListener("click", async (event) => {
       }
 
       target.dataset.url = finalUrl; // 次回以降のためにキャッシュ
-      await copyToClipboard(finalUrl, target);
+      await copyToClipboard(finalUrl, target, defaultLabel);
     } catch (err) {
       console.warn("Failed to resolve redirect, falling back to raw url:", err);
-      await copyToClipboard(rawUrl, target);
+      await copyToClipboard(rawUrl, target, defaultLabel);
     }
   }
 });
@@ -2475,9 +2479,12 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-async function copyToClipboard(text, button) {
+async function copyToClipboard(text, button, customOriginalText = null) {
   if (!text) return;
   let success = false;
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+  const originalText = customOriginalText || button?.dataset?.origText || button?.textContent || dict.copyUrl || "URLコピー";
 
   // 1. モダン API (navigator.clipboard)
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2509,16 +2516,15 @@ async function copyToClipboard(text, button) {
   }
 
   if (button) {
-    const originalText = button.textContent;
     if (success) {
-      button.textContent = "コピー完了!";
+      button.textContent = dict.copied || "コピー完了!";
       button.style.color = "#4caf50";
       setTimeout(() => {
         button.textContent = originalText;
         button.style.color = "";
       }, 2000);
     } else {
-      button.textContent = "失敗";
+      button.textContent = dict.failed || "失敗";
       button.style.color = "var(--danger)";
       setTimeout(() => {
         button.textContent = originalText;
