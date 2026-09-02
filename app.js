@@ -1272,6 +1272,16 @@ function createCardActionHtml(file, result, index) {
     ? "変換・リネームが両方オフのためダウンロード無効"
     : "ダウンロード";
 
+  const currentSize = result ? result.size : file.size;
+  const isOverKvLimit = currentSize > KV_MAX_SIZE;
+  const upBtnDisabled = isOverKvLimit ? "disabled" : "";
+  const upBtnTitle = isOverKvLimit
+    ? "25MB超のためCloudflare KVへアップロード不可（上限: 25MB）"
+    : "このファイルだけ変換してCloudflareへアップロード";
+  const upBtnStyle = isOverKvLimit
+    ? "opacity: 0.35; font-size: 11px; padding: 0 8px; height: 28px; cursor: not-allowed;"
+    : "font-size: 11px; padding: 0 8px; height: 28px;";
+
   if (result && result.isUploading) {
     return `<span class="status-text saving" style="font-size: 11px;">アップロード中...</span>`;
   }
@@ -1288,7 +1298,7 @@ function createCardActionHtml(file, result, index) {
   // 待機中または変換完了（未アップロード）時
   return `
     <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="${dlBtnTitle}" ${dlBtnDisabled}>📥 DL</button>
-    <button type="button" class="ghost-button upload-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="このファイルだけ変換してCloudflareへアップロード">☁️ UP</button>
+    <button type="button" class="ghost-button upload-single-btn" data-index="${index}" style="${upBtnStyle}" title="${upBtnTitle}" ${upBtnDisabled}>☁️ UP</button>
     <button type="button" class="ghost-button civitai-post-btn" style="${civitaiBtnStyle}" data-index="${index}" title="${civitaiBtnTitle}" ${civitaiBtnDisabled}>🎨 Civitai</button>
   `;
 }
