@@ -1,5 +1,18 @@
 import QRCode from "qrcode";
-import { encode as encodeJxl } from "@jsquash/jxl";
+import encodeJxl, { init as initJxl } from "@jsquash/jxl/encode.js";
+import jxlEncoder from "@jsquash/jxl/codec/enc/jxl_enc.js";
+
+let jxlInitialized = false;
+async function ensureJxl() {
+  if (!jxlInitialized) {
+    try {
+      await initJxl(jxlEncoder);
+      jxlInitialized = true;
+    } catch (e) {
+      console.error("Failed to init JXL encoder:", e);
+    }
+  }
+}
 
 const KV_MAX_SIZE = 25 * 1024 * 1024;  // 25MB
 const KV_WARN_SIZE = 15 * 1024 * 1024; // 15MB
@@ -1590,6 +1603,7 @@ async function convertImage(file, index = 0) {
     context.drawImage(image, 0, 0);
 
     if (options.mimeType === "image/jxl") {
+      await ensureJxl();
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const qualityVal = qualityRange ? Number(qualityRange.value) : 85;
       const jxlBuffer = await encodeJxl(imageData, { quality: qualityVal });
@@ -1601,7 +1615,8 @@ async function convertImage(file, index = 0) {
       finalBlob = await canvasToBlob(canvas, options.mimeType, options.quality);
     }
   } catch (err) {
-    console.warn("Canvas conversion fallback failed, using original blob:", err);
+    console.error("Image conversion error:", err);
+    alert(`画像変換エラー (${options.name}): ${err.message}`);
     finalBlob = file;
   }
 
