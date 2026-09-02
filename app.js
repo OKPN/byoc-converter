@@ -1251,6 +1251,27 @@ function createCardActionHtml(file, result, index) {
   const lang = getAppLanguage();
   const dict = i18nDict[lang] || i18nDict.ja;
 
+  const currentName = result ? result.name : file.name;
+  const ext = currentName.split('.').pop().toLowerCase();
+  const isCivitaiSupported = ["jpg", "jpeg", "png", "webp", "mp4", "webm"].includes(ext);
+
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+  const isRenameOn = enableRenameCheck?.checked ?? true;
+  const canProcessLocal = isConvertOn || isRenameOn;
+
+  const civitaiBtnDisabled = !isCivitaiSupported ? "disabled" : "";
+  const civitaiBtnTitle = isCivitaiSupported
+    ? "リネームを無視して変換・一時共有し、Civitaiの投稿画面を開く"
+    : "Civitai非対応フォーマット（画像: JPG/PNG/WebP, 動画: MP4/WebM のみ）";
+  const civitaiBtnStyle = isCivitaiSupported
+    ? "color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;"
+    : "opacity: 0.35; font-size: 11px; padding: 0 8px; height: 28px; cursor: not-allowed;";
+
+  const dlBtnDisabled = (!canProcessLocal && !result) ? "disabled" : "";
+  const dlBtnTitle = (!canProcessLocal && !result)
+    ? "変換・リネームが両方オフのためダウンロード無効"
+    : "ダウンロード";
+
   if (result && result.isUploading) {
     return `<span class="status-text saving" style="font-size: 11px;">アップロード中...</span>`;
   }
@@ -1259,16 +1280,16 @@ function createCardActionHtml(file, result, index) {
     return `
       <input type="text" class="url-output" value="${escapeHtml(result.proxyUrl)}" readonly style="width: 140px; font-size: 11px; height: 28px; padding: 0 6px;">
       <button type="button" class="ghost-button copy-button" style="font-size: 11px; padding: 0 8px; height: 28px;">${escapeHtml(dict.copyUrl)}</button>
-      <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="ダウンロード">📥 DL</button>
-      <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;" data-index="${index}" title="Civitai の投稿画面を開く">🎨 Civitai</button>
+      <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="${dlBtnTitle}" ${dlBtnDisabled}>📥 DL</button>
+      <button type="button" class="ghost-button civitai-post-btn" style="${civitaiBtnStyle}" data-index="${index}" title="${civitaiBtnTitle}" ${civitaiBtnDisabled}>🎨 Civitai</button>
     `;
   }
 
   // 待機中または変換完了（未アップロード）時
   return `
-    <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="このファイルだけ変換してダウンロード">📥 DL</button>
+    <button type="button" class="ghost-button download-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="${dlBtnTitle}" ${dlBtnDisabled}>📥 DL</button>
     <button type="button" class="ghost-button upload-single-btn" data-index="${index}" style="font-size: 11px; padding: 0 8px; height: 28px;" title="このファイルだけ変換してCloudflareへアップロード">☁️ UP</button>
-    <button type="button" class="ghost-button civitai-post-btn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 11px; padding: 0 8px; height: 28px;" data-index="${index}" title="リネームを無視して変換・一時共有し、Civitaiの投稿画面を開く">🎨 Civitai</button>
+    <button type="button" class="ghost-button civitai-post-btn" style="${civitaiBtnStyle}" data-index="${index}" title="${civitaiBtnTitle}" ${civitaiBtnDisabled}>🎨 Civitai</button>
   `;
 }
 
