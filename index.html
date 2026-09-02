@@ -35,15 +35,24 @@
         </details>
 
         <div class="tool-grid">
-          <section class="panel input-panel">
+          <section class="panel files-panel">
             <div class="panel-heading">
-              <h2 data-i18n="inputFiles">入力ファイル</h2>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 data-i18n="inputFiles">ファイル</h2>
+                <span id="statusText" data-i18n="statusWaiting" style="font-size: 12px; color: var(--muted);">待機中</span>
+              </div>
               <div class="heading-actions" style="display: flex; gap: 8px; align-items: center;">
-                <button class="ghost-button" id="folderSelectButton" type="button" data-i18n="addFolder">フォルダを追加</button>
-                <button class="ghost-button danger-button" id="clearButton" type="button" data-i18n="btnClear">クリア</button>
-                <span id="fileCount">0件</span>
+                <button class="ghost-button" id="folderSelectButton" type="button" data-i18n="addFolder" style="font-size: 12px; min-height: 32px; padding: 0 10px;">フォルダを追加</button>
+                <button class="ghost-button danger-button" id="clearButton" type="button" data-i18n="btnClear" style="font-size: 12px; min-height: 32px; padding: 0 10px;">クリア</button>
+                <span id="fileCount" style="font-size: 12px; font-weight: 700; color: #a5b4fc;">0件</span>
               </div>
             </div>
+
+            <!-- プログレスバー -->
+            <div class="progress-container" style="padding: 0 18px 8px;">
+              <progress id="progressBar" value="0" max="100" style="height: 6px;"></progress>
+            </div>
+
             <label class="dropzone" id="dropzone">
               <input id="fileInput" type="file" accept="image/*,audio/*,video/*" multiple>
               <input id="folderInput" type="file" webkitdirectory directory multiple style="display: none;">
@@ -130,12 +139,9 @@
               </div>
 
               <!-- ローカル保存アクション -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-                <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload">
+              <div class="action-buttons-group" style="margin-top: 10px;">
+                <button class="primary-button" id="convertDownloadButton" type="button" disabled data-i18n="btnConvertDownload" style="font-size: 13px; min-height: 42px; width: 100%;">
                   📥 ダウンロード
-                </button>
-                <button class="secondary-button" id="convertButton" type="button" disabled data-i18n="btnConvertOnly">
-                  ⚙️ 画面内に保持
                 </button>
               </div>
             </div>
@@ -232,21 +238,6 @@
             </div>
           </aside>
         </div>
-
-        <section class="panel output-panel">
-          <div class="panel-heading">
-            <h2 data-i18n="outputFiles">出力ファイル</h2>
-            <span id="statusText" data-i18n="statusWaiting">待機中</span>
-          </div>
-          <div class="progress-container">
-            <progress id="progressBar" value="0" max="100"></progress>
-          </div>
-          <div class="output-actions">
-            <button class="ghost-button" id="uploadAllButton" type="button" disabled data-i18n="btnUploadAll">すべてアップロード</button>
-            <button class="primary-button" id="zipButton" type="button" disabled data-i18n="btnZipDownload">ZIPで一括ダウンロード</button>
-          </div>
-          <div class="result-list" id="resultList"></div>
-        </section>
 
         <details class="panel settings-accordion" id="postComposerPanel" style="margin: 24px 0;">
           <summary data-i18n="textComposerHeading">💬 テキスト作成支援</summary>

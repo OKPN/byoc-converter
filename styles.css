@@ -158,6 +158,30 @@ h2 {
   transform: scale(0.99);
 }
 
+.dropzone.has-files {
+  min-height: 56px;
+  padding: 10px 16px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dropzone.has-files .drop-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  border-width: 1.5px;
+}
+
+.dropzone.has-files strong {
+  font-size: 13px;
+}
+
+.dropzone.has-files span:last-child {
+  display: none;
+}
+
 .drop-icon {
   display: grid;
   place-items: center;
@@ -177,11 +201,34 @@ h2 {
   transform: scale(1.05);
 }
 
-.file-list,
-.result-list {
+.file-list {
   display: grid;
   gap: 10px;
   padding: 0 18px 18px;
+}
+
+.file-item.unified-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.file-item.unified-file-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.file-item.unified-file-card .thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .output-actions {

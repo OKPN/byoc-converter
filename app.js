@@ -1154,151 +1154,98 @@ function render() {
   const isRenameOn = enableRenameCheck?.checked ?? true;
   const canProcessLocal = isConvertOn || isRenameOn;
 
-  if (convertButton) convertButton.disabled = !hasFiles || !canProcessLocal;
   if (convertDownloadButton) convertDownloadButton.disabled = !hasFiles || !canProcessLocal;
   if (convertUploadButton) convertUploadButton.disabled = !hasFiles || !cfOk;
 
-  updateZipButtonState();
-  updateUploadAllButtonState();
-  updateRenamePreview();
+  if (dropzone) {
+    dropzone.classList.toggle("has-files", hasFiles);
+  }
 
-  if (progressBar) {
-    progressBar.value = state.results.length && state.files.length
-      ? Math.round((state.results.length / state.files.length) * 100)
-      : 0;
-  }
-  if (statusText) {
-    statusText.textContent = hasFiles ? "準備完了" : "待機中";
-    statusText.className = "";
-  }
+  updateRenamePreview();
 
   if (fileList) {
     fileList.innerHTML = "";
-    fileList.querySelectorAll(".thumb[src^='blob:']").forEach(img => URL.revokeObjectURL(img.src));
+    const lang = getAppLanguage();
+    const dict = i18nDict[lang] || i18nDict.ja;
 
     state.files.forEach((file, index) => {
+      const result = state.results[index];
       const item = document.createElement("article");
-      item.className = "file-item";
+      item.className = "file-item unified-file-card";
+      if (result) item.dataset.id = result.id;
       
       let thumbHtml = "";
-      const ext = file.name.split('.').pop().toLowerCase();
+      const currentName = result ? result.name : file.name;
+      const ext = currentName.split('.').pop().toLowerCase();
       const isVideo = (file.type && file.type.startsWith("video/")) || ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
 
-      if (file.type.startsWith("image/")) {
+      if (result && result.previewUrl) {
+        thumbHtml = `<img class="thumb" alt="" src="${result.previewUrl}">`;
+      } else if (file.type.startsWith("image/")) {
         thumbHtml = `<img class="thumb" alt="" src="${URL.createObjectURL(file)}">`;
       } else if (isVideo) {
-        thumbHtml = `<video class="thumb" src="${URL.createObjectURL(file)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
+        const videoSrc = result && result.proxyUrl ? result.proxyUrl : URL.createObjectURL(file);
+        thumbHtml = `<video class="thumb" src="${videoSrc}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
       } else {
         thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase())}</div>`;
       }
 
+      let metaHtml = "";
+      let warnNotice = "";
+
+      if (result) {
+        const saved = result.originalSize - result.size;
+        const savedRate = result.originalSize ? Math.round((saved / result.originalSize) * 100) : 0;
+
+        if (result.isNonImage) {
+          metaHtml = `${formatBytes(result.size)} · ${escapeHtml(dict.nonConverted)}`;
+        } else {
+          let rateText = "";
+          if (savedRate > 0) {
+            const template = dict.rateReduced || "{rate}% 削減";
+            rateText = `<span style="color: #4caf50; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(savedRate)))}</span>`;
+          } else if (savedRate < 0) {
+            const absRate = Math.abs(savedRate);
+            const template = dict.rateIncreased || "{rate}% 増加";
+            rateText = `<span style="color: #ff5252; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(absRate)))}</span>`;
+          } else {
+            rateText = `<span style="color: var(--muted);">${escapeHtml(dict.rateUnchanged || "0% 変化なし")}</span>`;
+          }
+          metaHtml = `${formatBytes(result.originalSize)} ➔ <strong style="color: #fff;">${formatBytes(result.size)}</strong> (${rateText})`;
+        }
+
+        if (result.size > KV_MAX_SIZE) {
+          warnNotice = `<div style="font-size: 11px; color: var(--danger); font-weight: bold; margin-top: 2px;">⚠️ 25MB超のためアップロード不可</div>`;
+        }
+      } else {
+        metaHtml = `${formatBytes(file.size)} · <span style="color: var(--muted);">待機中</span>`;
+      }
+
+      const targetUrl = result ? (result.isUploaded && result.proxyUrl ? result.proxyUrl : result.url) : null;
+      const thumbWrapper = targetUrl
+        ? `<a href="${escapeHtml(targetUrl)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="表示">${thumbHtml}</a>`
+        : thumbHtml;
+
       item.innerHTML = `
-        ${thumbHtml}
-        <div>
-          <div class="item-name">${escapeHtml(file.name)}</div>
-          <div class="item-meta">${formatBytes(file.size)} · ${escapeHtml(file.type || "不明")}</div>
+        ${thumbWrapper}
+        <div class="item-info-col" style="flex: 1; min-width: 0;">
+          <div class="item-name" style="font-weight: 600; font-size: 13px;">${escapeHtml(currentName)}</div>
+          <div class="item-meta" style="font-size: 11px; margin-top: 2px;">${metaHtml}</div>
+          ${warnNotice}
         </div>
-        <button type="button" class="ghost-button delete-button danger-button" data-index="${index}" aria-label="削除">&times;</button>
+        <div class="item-actions-col" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          ${result ? createActionHtml(result) : ""}
+          <button type="button" class="ghost-button delete-button danger-button" data-index="${index}" aria-label="削除" style="min-width: 28px; height: 28px; padding: 0 6px; font-size: 14px; line-height: 1;">&times;</button>
+        </div>
       `;
       fileList.append(item);
     });
   }
-
-  renderResults();
 }
 
-fileList?.addEventListener("click", (event) => {
-  if (event.target.classList.contains("delete-button")) {
-    const index = Number(event.target.dataset.index);
-    if (!isNaN(index) && index >= 0 && index < state.files.length) {
-      state.files.splice(index, 1);
-      render();
-    }
-  }
-});
-
 function renderResults() {
-  if (!resultList) return;
-  const lang = getAppLanguage();
-  const dict = i18nDict[lang] || i18nDict.ja;
-  resultList.innerHTML = "";
-  if (!state.results.length) {
-    const empty = document.createElement("div");
-    empty.className = "item-meta";
-    empty.textContent = "変換後のファイルがここに表示されます。";
-    resultList.append(empty);
-    return;
-  }
-
-  state.results.forEach(result => {
-    if (!result) return;
-    const saved = result.originalSize - result.size;
-    const savedRate = result.originalSize ? Math.round((saved / result.originalSize) * 100) : 0;
-    const item = document.createElement("article");
-    item.className = "result-item";
-    item.dataset.id = result.id;
-
-    let thumbHtml = "";
-    const ext = result.name.split('.').pop().toLowerCase();
-    const isVideo = ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
-
-    if (result.isNonImage) {
-      if (isVideo) {
-        const videoSrc = result.proxyUrl || result.url;
-        thumbHtml = `<video class="thumb" src="${escapeHtml(videoSrc)}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
-      } else {
-        thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase())}</div>`;
-      }
-    } else if (result.previewUrl) {
-      thumbHtml = `<img class="thumb" alt="" src="${result.previewUrl}">`;
-    } else {
-      thumbHtml = `<div class="thumb format-badge">JXL</div>`;
-    }
-
-    let metaHtml = "";
-    if (result.isNonImage) {
-      metaHtml = `${formatBytes(result.size)} · ${escapeHtml(dict.nonConverted)}`;
-    } else {
-      let rateText = "";
-      if (savedRate > 0) {
-        const template = dict.rateReduced || "{rate}% 削減";
-        rateText = `<span style="color: #4caf50; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(savedRate)))}</span>`;
-      } else if (savedRate < 0) {
-        const absRate = Math.abs(savedRate);
-        const template = dict.rateIncreased || "{rate}% 増加";
-        rateText = `<span style="color: #ff5252; font-weight: bold;">${escapeHtml(template.replace("{rate}", String(absRate)))}</span>`;
-      } else {
-        rateText = `<span style="color: var(--muted);">${escapeHtml(dict.rateUnchanged || "0% 変化なし")}</span>`;
-      }
-      metaHtml = `${formatBytes(result.originalSize)} -> ${formatBytes(result.size)} · ${rateText}`;
-    }
-
-    let warnNotice = "";
-    if (result.size > KV_MAX_SIZE) {
-      warnNotice = `<div style="font-size: 11px; color: var(--danger); font-weight: bold; margin-top: 2px;">⚠️ 25MB超のためアップロード不可（上限: 25MB）</div>`;
-    } else if (result.size >= KV_WARN_SIZE) {
-      warnNotice = `<div style="font-size: 11px; color: #ffb74d; margin-top: 2px;">⚠️ 15MB以上の大容量ファイル</div>`;
-    }
-
-    const targetUrl = result.isUploaded && result.proxyUrl ? result.proxyUrl : result.url;
-
-    item.innerHTML = `
-      <a href="${escapeHtml(targetUrl)}" target="_blank" rel="noopener noreferrer" class="thumb-link" title="画像を表示">
-        ${thumbHtml}
-      </a>
-      <div>
-        <div class="item-name">${escapeHtml(result.name)}</div>
-        <div class="item-meta">${metaHtml}</div>
-        ${warnNotice}
-      </div>
-      <div class="result-actions">
-        ${createActionHtml(result)}
-      </div>
-    `;
-    resultList.append(item);
-  });
-  updateZipButtonState();
-  updateUploadAllButtonState();
+  // 後方互換性のためのエイリアス
+  render();
 }
 
 function createActionHtml(result) {
@@ -1326,29 +1273,49 @@ function createActionHtml(result) {
   `;
 }
 
-resultList?.addEventListener("click", async (event) => {
+fileList?.addEventListener("click", async (event) => {
   const target = event.target;
-  const resultId = target.closest(".result-item")?.dataset.id;
-  if (!resultId) return;
+  const card = target.closest(".unified-file-card");
+  if (!card) return;
 
+  // 1. 削除ボタン
+  if (target.classList.contains("delete-button")) {
+    const index = Number(target.dataset.index);
+    if (!isNaN(index) && index >= 0 && index < state.files.length) {
+      const removedResult = state.results[index];
+      if (removedResult) {
+        if (removedResult.url) URL.revokeObjectURL(removedResult.url);
+        if (removedResult.previewUrl) URL.revokeObjectURL(removedResult.previewUrl);
+      }
+      state.files.splice(index, 1);
+      state.results.splice(index, 1);
+      render();
+    }
+    return;
+  }
+
+  // 2. 変換後アクション
+  const resultId = card.dataset.id;
   const result = state.results.find(r => r && r.id === resultId);
   if (!result) return;
 
   if (target.classList.contains("download-single-btn")) {
-    const url = target.dataset.url;
-    const name = target.dataset.name;
+    const url = target.dataset.url || result.url;
+    const name = target.dataset.name || result.name;
     if (url && name) downloadUrl(url, name);
+    return;
   }
 
   if (target.classList.contains("upload-button")) {
     await uploadImage(result);
+    return;
   }
 
   if (target.classList.contains("copy-button")) {
-    const item = target.closest(".result-item");
-    const inputUrl = item?.querySelector(".url-output")?.value;
+    const inputUrl = card.querySelector(".url-output")?.value;
     const urlToCopy = result.proxyUrl || inputUrl || target.dataset.url;
     await copyToClipboard(urlToCopy, target);
+    return;
   }
 
   if (target.classList.contains("civitai-post-btn")) {
@@ -1365,10 +1332,6 @@ resultList?.addEventListener("click", async (event) => {
     const mediaUrl = result.proxyUrl || target.dataset.url;
     const name = result.name || target.dataset.name;
     openCivitaiIntent(mediaUrl, name);
-  }
-
-  if (target.classList.contains("delete-button")) {
-    await deleteImage(result);
   }
 });
 
