@@ -1974,11 +1974,16 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
     const password = customPassword !== null ? customPassword : (pwdInput ? pwdInput.value.trim() : "");
     const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
 
+    const isConvertOn = enableConvertCheck?.checked ?? true;
+    const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
+    const hasWf = Boolean((originalFile?.metaStatus?.hasWorkflow || originalFile?.metaStatus?.hasPrompt) && !isConvertOn);
+
     const response = await fetch(uploadUrl, {
       method: "POST",
       headers: getRequestHeaders({
         "Content-Type": result.blob ? (result.blob.type || "application/octet-stream") : "application/octet-stream",
         ...(password ? { "X-Upload-Password": password } : {}),
+        ...(hasWf ? { "X-Has-Workflow": "true" } : {}),
       }),
       body: result.blob,
     });
@@ -2242,15 +2247,23 @@ async function fetchAndRenderR2Files() {
       `;
       r2FileList.append(item);
 
-      // ワークフローの有無を非同期で判定し、存在する場合のみバッジを表示
-      checkRemoteFileWf(file).then(hasWf => {
-        if (hasWf) {
-          const placeholder = item.querySelector('.r2-wf-badge-placeholder');
-          if (placeholder) {
-            placeholder.innerHTML = '<span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIワークフローまたはプロンプトが含まれています。">🧬 ワークフローあり</span>';
-          }
+      // 1. Workerメタデータ（file.hasWorkflow）があれば【通信ゼロ】で即座にバッジ表示
+      if (file.hasWorkflow) {
+        const placeholder = item.querySelector('.r2-wf-badge-placeholder');
+        if (placeholder) {
+          placeholder.innerHTML = '<span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIワークフローまたはプロンプトが含まれています。">🧬 ワークフローあり</span>';
         }
-      });
+      } else {
+        // 2. 過去のファイル（Workerメタデータ未設定）のみ、localStorageキャッシュまたは初回フォールバック
+        checkRemoteFileWf(file).then(hasWf => {
+          if (hasWf) {
+            const placeholder = item.querySelector('.r2-wf-badge-placeholder');
+            if (placeholder) {
+              placeholder.innerHTML = '<span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIワークフローまたはプロンプトが含まれています。">🧬 ワークフローあり</span>';
+            }
+          }
+        });
+      }
     });
 
     updateSelectedR2ActionButtonsState();
