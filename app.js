@@ -1343,6 +1343,38 @@ function createComfyBadgeHtml(file, result) {
   return `<div class="comfy-meta-row" style="margin-top: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">${badge}${statusNotice}</div>`;
 }
 
+
+async function checkRemoteFileWf(file) {
+  if (!file || !file.url || file.hasPassword) return false;
+  const ext = file.filename ? file.filename.split('.').pop().toLowerCase() : "";
+  if (!["png", "webp"].includes(ext)) return false;
+
+  let wfStore = {};
+  try {
+    wfStore = JSON.parse(localStorage.getItem("comfyWfMap") || "{}");
+  } catch (e) {}
+
+  if (wfStore[file.key] !== undefined) return wfStore[file.key];
+  if (wfStore[file.filename] !== undefined) return wfStore[file.filename];
+
+  try {
+    const res = await fetch(file.url);
+    if (res.ok) {
+      // 最初の最大 2MB だけ取得して判定
+      const blob = await res.blob();
+      const meta = await detectComfyMetadata(blob);
+      const hasWf = Boolean(meta.hasWorkflow || meta.hasPrompt);
+      wfStore[file.key] = hasWf;
+      wfStore[file.filename] = hasWf;
+      localStorage.setItem("comfyWfMap", JSON.stringify(wfStore));
+      return hasWf;
+    }
+  } catch (err) {
+    console.debug("Remote WF check skipped:", err);
+  }
+  return false;
+}
+
 function addFiles(files) {
   const allowed = files.filter((file) => {
     return file.type.startsWith("image/") || 
@@ -1961,6 +1993,19 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
     result.proxyUrl = getPublicUrl(data.url);
     result.storageKey = extractStorageKey(data.url || data.key || result.name);
 
+    // ワークフローの有無を記憶（変換OFFで元画像にWFがあれば保持される）
+    try {
+      const isConvertOn = enableConvertCheck?.checked ?? true;
+      const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
+      const hadWf = Boolean(originalFile?.metaStatus?.hasWorkflow || originalFile?.metaStatus?.hasPrompt);
+      if (hadWf && !isConvertOn) {
+        let wfStore = JSON.parse(localStorage.getItem("comfyWfMap") || "{}");
+        if (result.storageKey) wfStore[result.storageKey] = true;
+        if (result.name) wfStore[result.name] = true;
+        localStorage.setItem("comfyWfMap", JSON.stringify(wfStore));
+      }
+    } catch (e) {}
+
     paletteFiles.unshift({ key: result.storageKey, url: result.proxyUrl });
     renderUrlPalette();
 
@@ -2182,6 +2227,7 @@ async function fetchAndRenderR2Files() {
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
             <span style="color: #64748b; font-size: 11px; white-space: nowrap;">${formatBytes(file.size)}</span>
+            <span class="r2-wf-badge-placeholder" data-key="${escapeHtml(file.key)}"></span>
             <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
             ${file.hasPassword ? `<span class="password-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;">🔒 ${file.password ? `パスワード: ${escapeHtml(file.password)}` : "パスワード保護"}</span>` : ""}
           </div>
@@ -2195,6 +2241,16 @@ async function fetchAndRenderR2Files() {
         </div>
       `;
       r2FileList.append(item);
+
+      // ワークフローの有無を非同期で判定し、存在する場合のみバッジを表示
+      checkRemoteFileWf(file).then(hasWf => {
+        if (hasWf) {
+          const placeholder = item.querySelector('.r2-wf-badge-placeholder');
+          if (placeholder) {
+            placeholder.innerHTML = '<span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIワークフローまたはプロンプトが含まれています。">🧬 ワークフローあり</span>';
+          }
+        }
+      });
     });
 
     updateSelectedR2ActionButtonsState();
