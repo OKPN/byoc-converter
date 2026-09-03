@@ -590,7 +590,7 @@ async function fetchAndRenderCivitaiGallery() {
   civitaiGalleryList.innerHTML = `<span class="status-text" style="padding: 18px;">Civitai からメディアを取得中 (${escapeHtml(username)})...</span>`;
 
   try {
-    const res = await fetch(`https://civitai.com/api/v1/images?username=${encodeURIComponent(username)}&limit=50&sort=Newest&browsingLevel=31&nsfw=true`);
+    const res = await fetch(`https://civitai.com/api/v1/images?username=${encodeURIComponent(username)}&limit=50&sort=Newest&browsingLevel=127&nsfw=true&_t=${Date.now()}`);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
     }
