@@ -1354,6 +1354,17 @@ function addFiles(files) {
   state.files.push(...allowed);
   invalidateConversionCache();
   render();
+
+  // バックグラウンドで ComfyUI / AIメタデータを高速検出
+  allowed.forEach(async (file) => {
+    try {
+      file.metaStatus = await detectComfyMetadata(file);
+    } catch (e) {
+      console.warn("Meta parse error:", e);
+      file.metaStatus = { hasWorkflow: false, type: "none" };
+    }
+    render();
+  });
 }
 
 function setUiLock(locked) {
