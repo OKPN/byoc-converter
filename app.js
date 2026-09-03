@@ -501,6 +501,35 @@ function updateCivitaiStatus() {
   return username !== "";
 }
 
+async function checkCivitaiItemWf(item) {
+  if (!item || !item.url) return false;
+
+  let store = {};
+  try {
+    store = JSON.parse(localStorage.getItem("civitaiWfMap") || "{}");
+  } catch (e) {}
+
+  if (store[item.id] !== undefined) return store[item.id];
+
+  try {
+    // 先頭 128KB を Range リクエストで超高速取得
+    const res = await fetch(item.url, { headers: { Range: "bytes=0-131072" } });
+    if (res.ok || res.status === 206) {
+      const buf = await res.arrayBuffer();
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(buf));
+      const hasWf = (text.includes('"nodes"') && text.includes('"links"')) ||
+                    (text.includes('"inputs"') && text.includes('"class_type"')) ||
+                    text.includes('"workflow"');
+      store[item.id] = hasWf;
+      localStorage.setItem("civitaiWfMap", JSON.stringify(store));
+      return hasWf;
+    }
+  } catch (err) {
+    console.debug("Civitai WF check skipped:", err);
+  }
+  return false;
+}
+
 async function fetchAndRenderCivitaiGallery() {
   const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
   if (!civitaiGalleryList) return;
