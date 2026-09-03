@@ -1201,22 +1201,21 @@ clearButton?.addEventListener("click", () => {
 async function detectComfyMetadata(file) {
   if (!file) return { hasWorkflow: false, hasPrompt: false, hasA1111: false, type: "none" };
 
-  const fileName = file.name.toLowerCase();
+  const fileName = (file.name || "").toLowerCase();
   const isPng = fileName.endsWith(".png") || file.type === "image/png";
-  const isWebp = fileName.endsWith(".webp") || file.type === "image/webp";
   const isMp4 = fileName.endsWith(".mp4") || file.type === "video/mp4";
   const isWebm = fileName.endsWith(".webm") || file.type === "video/webm";
 
   try {
-    // 最初の最大 4MB を読み込んでメタデータを探索
-    const sliceSize = Math.min(file.size, 4 * 1024 * 1024);
-    const buffer = await file.slice(0, sliceSize).arrayBuffer();
+    // 1. 先頭領域（最大 4MB）の読み込み
+    const headSize = Math.min(file.size, 4 * 1024 * 1024);
+    const headBuffer = await file.slice(0, headSize).arrayBuffer();
 
     if (isPng) {
-      const view = new DataView(buffer);
+      const view = new DataView(headBuffer);
       if (view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a) {
         let offset = 8;
-        const length = buffer.byteLength;
+        const length = headBuffer.byteLength;
         let hasWorkflow = false;
         let hasPrompt = false;
         let hasA1111 = false;
@@ -1236,7 +1235,7 @@ async function detectComfyMetadata(file) {
           if (chunkType === "IEND") break;
 
           if (chunkType === "tEXt" || chunkType === "iTXt") {
-            const chunkData = new Uint8Array(buffer, offset, chunkLength);
+            const chunkData = new Uint8Array(headBuffer, offset, chunkLength);
             let nullIndex = -1;
             for (let i = 0; i < chunkData.length; i++) {
               if (chunkData[i] === 0) { nullIndex = i; break; }
@@ -1248,9 +1247,7 @@ async function detectComfyMetadata(file) {
                 try {
                   const text = new TextDecoder("utf-8").decode(chunkData.subarray(nullIndex + 1));
                   const wfJson = JSON.parse(text);
-                  if (Array.isArray(wfJson.nodes)) {
-                    nodeCount = wfJson.nodes.length;
-                  }
+                  if (Array.isArray(wfJson.nodes)) nodeCount = wfJson.nodes.length;
                 } catch (e) {}
               } else if (keyword === "prompt") {
                 hasPrompt = true;
@@ -1263,29 +1260,31 @@ async function detectComfyMetadata(file) {
           offset += chunkLength + 4; // データ + CRC
         }
 
-        if (hasWorkflow) {
-          return { hasWorkflow: true, hasPrompt, hasA1111, nodeCount, type: "comfy_workflow" };
-        }
-        if (hasPrompt) {
-          return { hasWorkflow: false, hasPrompt: true, hasA1111, type: "comfy_prompt" };
-        }
-        if (hasA1111) {
-          return { hasWorkflow: false, hasPrompt: false, hasA1111: true, type: "a1111" };
-        }
+        if (hasWorkflow) return { hasWorkflow: true, hasPrompt, hasA1111, nodeCount, type: "comfy_workflow" };
+        if (hasPrompt) return { hasWorkflow: false, hasPrompt: true, hasA1111, type: "comfy_prompt" };
+        if (hasA1111) return { hasWorkflow: false, hasPrompt: false, hasA1111: true, type: "a1111" };
       }
     }
 
-    // WebP, MP4, WebM またはその他のテキスト探索フォールバック
-    const textSample = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(buffer));
-    const hasWorkflowStr = textSample.includes('"nodes"') && textSample.includes('"workflow"') && textSample.includes('"links"');
-    const hasPromptStr = textSample.includes('"client_id"') || (textSample.includes('"inputs"') && textSample.includes('"class_type"'));
+    // 2. 先頭テキストの判定
+    let textSample = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(headBuffer));
 
-    if (hasWorkflowStr) {
-      return { hasWorkflow: true, hasPrompt: hasPromptStr, hasA1111: false, type: "comfy_workflow" };
+    // 3. 動画（MP4 / WebM）の場合、メタデータ（moovボックス）がファイルの末尾にあることが多いため、末尾も読み込む
+    if ((isMp4 || isWebm) && file.size > headSize) {
+      const tailSize = Math.min(file.size, 3 * 1024 * 1024);
+      const tailBuffer = await file.slice(file.size - tailSize).arrayBuffer();
+      const tailText = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(tailBuffer));
+      textSample = textSample + "\n" + tailText;
     }
-    if (hasPromptStr) {
-      return { hasWorkflow: false, hasPrompt: true, hasA1111: false, type: "comfy_prompt" };
-    }
+
+    // 判定ロジック（ComfyUI-VideoHelperSuite / VHS 形式対応）
+    const hasWf = (textSample.includes('"nodes"') && textSample.includes('"links"')) ||
+                  (textSample.includes('"workflow"') && textSample.includes('"nodes"'));
+    const hasPrompt = (textSample.includes('"inputs"') && textSample.includes('"class_type"')) ||
+                      textSample.includes('"client_id"') || textSample.includes('"extra_pnginfo"');
+
+    if (hasWf) return { hasWorkflow: true, hasPrompt, hasA1111: false, type: "comfy_workflow" };
+    if (hasPrompt) return { hasWorkflow: false, hasPrompt: true, hasA1111: false, type: "comfy_prompt" };
     if (textSample.includes("Negative prompt:") || textSample.includes("Steps: ")) {
       return { hasWorkflow: false, hasPrompt: false, hasA1111: true, type: "a1111" };
     }
@@ -1331,9 +1330,11 @@ function createComfyBadgeHtml(file, result) {
     `;
   }
 
+  const fileExt = (file.name || "").split('.').pop().toLowerCase();
+  const isVideo = ["mp4", "webm", "mov"].includes(fileExt) || file.type?.startsWith("video/");
   let statusNotice = "";
-  if (meta.hasWorkflow) {
-    if (isConvertOn) {
+  if (meta.hasWorkflow || meta.hasPrompt) {
+    if (isConvertOn && !isVideo) {
       statusNotice = '<span style="font-size: 10px; color: #f87171; margin-left: 4px;" title="画像を変換（再エンコード）するとブラウザの仕様によりワークフローは削除されます。保持したい場合は『画像を変換する』をOFFにしてください。">⚠️ 変換ONのためExif/WFは削除されます</span>';
     } else {
       statusNotice = '<span style="font-size: 10px; color: #34d399; margin-left: 4px;">🛡️ ワークフロー保持のまま保存/共有されます</span>';
@@ -1347,7 +1348,7 @@ function createComfyBadgeHtml(file, result) {
 async function checkRemoteFileWf(file) {
   if (!file || !file.url || file.hasPassword) return false;
   const ext = file.filename ? file.filename.split('.').pop().toLowerCase() : "";
-  if (!["png", "webp"].includes(ext)) return false;
+  if (!["png", "webp", "mp4", "webm"].includes(ext)) return false;
 
   let wfStore = {};
   try {
@@ -1976,7 +1977,10 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
 
     const isConvertOn = enableConvertCheck?.checked ?? true;
     const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
-    const hasWf = Boolean((originalFile?.metaStatus?.hasWorkflow || originalFile?.metaStatus?.hasPrompt) && !isConvertOn);
+    const origExt = originalFile ? originalFile.name.split('.').pop().toLowerCase() : "";
+    const isVideo = ["mp4", "webm", "mov"].includes(origExt) || originalFile?.type?.startsWith("video/");
+    // 動画は画像変換を通さないため、isConvertOnに関わらずメタデータが完全保持される
+    const hasWf = Boolean((originalFile?.metaStatus?.hasWorkflow || originalFile?.metaStatus?.hasPrompt) && (!isConvertOn || isVideo));
 
     const response = await fetch(uploadUrl, {
       method: "POST",
