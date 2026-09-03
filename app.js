@@ -2012,9 +2012,6 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
   try {
     const ttl = customTtl !== null ? String(customTtl) : (tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200");
     const pwdInput = document.querySelector("#tempPasswordInput");
-    const password = customPassword !== null ? customPassword : (pwdInput ? pwdInput.value.trim() : "");
-    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
-
     const isConvertOn = enableConvertCheck?.checked ?? true;
     const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
     const origExt = originalFile ? originalFile.name.split('.').pop().toLowerCase() : "";
@@ -2022,12 +2019,13 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
     // 動画は画像変換を通さないため、isConvertOnに関わらずメタデータが完全保持される
     const hasWf = Boolean((originalFile?.metaStatus?.hasWorkflow || originalFile?.metaStatus?.hasPrompt) && (!isConvertOn || isVideo));
 
+    const uploadUrl = getApiUrl(`/temp-upload?filename=${encodeURIComponent(result.name)}&ttl=${ttl}${password ? `&password=${encodeURIComponent(password)}` : ""}${hasWf ? "&hasWorkflow=true" : ""}`);
+
     const response = await fetch(uploadUrl, {
       method: "POST",
       headers: getRequestHeaders({
         "Content-Type": result.blob ? (result.blob.type || "application/octet-stream") : "application/octet-stream",
         ...(password ? { "X-Upload-Password": password } : {}),
-        ...(hasWf ? { "X-Has-Workflow": "true" } : {}),
       }),
       body: result.blob,
     });
