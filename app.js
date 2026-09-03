@@ -1136,7 +1136,9 @@ function updateStorageUsageUI() {
   
   if (storageUsageText) {
     const formattedLimit = limitMb >= 1000 ? "1.0 GB" : `${(limitMb / 1000).toFixed(1)} GB`;
-    storageUsageText.textContent = `使用量: ${formatBytes(totalSize)} / ${formattedLimit} (${clampedPercentage}%)`;
+    const savedSize = state.r2SavedSize || 0;
+    const savedText = savedSize > 0 ? ` (⚡ ${formatBytes(savedSize)} 節約中)` : "";
+    storageUsageText.textContent = `使用量: ${formatBytes(totalSize)} / ${formattedLimit} (${clampedPercentage}%)${savedText}`;
     
     if (totalSize > limitBytes) {
       storageUsageText.classList.add("storage-warning");
@@ -2266,8 +2268,22 @@ async function fetchAndRenderR2Files() {
     paletteFiles = publicFiles.map(f => ({ key: f.key, url: f.url }));
     renderUrlPalette();
 
-    const totalSize = publicFiles.reduce((sum, f) => sum + (f.size || 0), 0);
-    state.r2TotalSize = totalSize;
+    let dedupMap = {};
+    try { dedupMap = JSON.parse(localStorage.getItem("dedupKeysMap") || "{}"); } catch (e) {}
+
+    let uniqueSize = 0;
+    let savedSize = 0;
+    publicFiles.forEach(f => {
+      const isDedup = f.deduped || dedupMap[f.key] || dedupMap[f.filename];
+      if (isDedup) {
+        savedSize += (f.size || 0);
+      } else {
+        uniqueSize += (f.size || 0);
+      }
+    });
+
+    state.r2TotalSize = uniqueSize;
+    state.r2SavedSize = savedSize;
     updateStorageUsageUI();
 
     r2FileList.innerHTML = "";
