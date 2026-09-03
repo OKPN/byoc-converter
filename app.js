@@ -409,9 +409,7 @@ const extensions = {
 };
 
 const defaultTemplates = {
-  "morning": { name: "朝の挨拶", text: "おはよー！\n{url}" },
-  "noon": { name: "昼の挨拶", text: "こんにちは！\n{url}" },
-  "night": { name: "夜の挨拶", text: "おつかれさま！\n{url}" }
+  "standard": { name: "基本の挨拶", text: "お世話になっております。\n画像を添付いたします。\n" }
 };
 
 // --- 安全な動的接続ヘルパー（ハードコードなし・localStorageから取得） ---
