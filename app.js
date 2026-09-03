@@ -111,6 +111,7 @@ const i18nDict = {
     promptNew: "🆕 新しい定型文を追加...",
     promptSave: "定型文を保存",
     promptDelete: "削除",
+    btnInsertUrlTag: "＋ {url} を挿入",
     btnSaveShort: "保存",
     btnCancelShort: "戻る",
     timeRemainingDays: "あと {d}日 {h}時間 で自動消滅",
@@ -216,6 +217,7 @@ const i18nDict = {
     promptNew: "🆕 Add New Template...",
     promptSave: "Save Template",
     promptDelete: "Delete",
+    btnInsertUrlTag: "＋ Insert {url}",
     btnSaveShort: "Save",
     btnCancelShort: "Cancel",
     timeRemainingDays: "Auto-expires in {d}d {h}h",
@@ -393,6 +395,7 @@ const storageLimitOutput = document.querySelector("#storageLimitOutput");
 const templateSelect = document.querySelector("#templateSelect");
 const saveTemplateButton = document.querySelector("#saveTemplateButton");
 const deleteTemplateButton = document.querySelector("#deleteTemplateButton");
+const insertUrlTagButton = document.querySelector("#insertUrlTagButton");
 const paletteList = document.querySelector("#paletteList");
 const composerTextarea = document.querySelector("#composerTextarea");
 const clearComposerButton = document.querySelector("#clearComposerButton");
@@ -409,7 +412,7 @@ const extensions = {
 };
 
 const defaultTemplates = {
-  "standard": { name: "基本の挨拶", text: "お世話になっております。\n画像を添付いたします。\n" }
+  "standard": { name: "基本の挨拶", text: "お世話になっております。\n画像を添付いたします。\n\n{url}" }
 };
 
 // --- 安全な動的接続ヘルパー（ハードコードなし・localStorageから取得） ---
@@ -2749,6 +2752,18 @@ deleteTemplateButton?.addEventListener("click", () => {
   localStorage.setItem("composerTemplates", JSON.stringify(savedTemplates));
   loadTemplates("");
   if (composerTextarea) composerTextarea.value = "";
+});
+
+insertUrlTagButton?.addEventListener("click", () => {
+  if (!composerTextarea) return;
+  const start = composerTextarea.selectionStart ?? composerTextarea.value.length;
+  const end = composerTextarea.selectionEnd ?? composerTextarea.value.length;
+  const text = composerTextarea.value;
+  const insertText = "{url}";
+  composerTextarea.value = text.substring(0, start) + insertText + text.substring(end);
+  composerTextarea.focus();
+  const nextPos = start + insertText.length;
+  composerTextarea.setSelectionRange(nextPos, nextPos);
 });
 
 clearComposerButton?.addEventListener("click", () => {
