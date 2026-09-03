@@ -130,7 +130,52 @@ const i18nDict = {
     siteTitle: "BYOC Converter",
     eyebrow: "Secure client-side image processing right inside your browser!",
     whatIsSiteSummary: "❓ What is this site?",
-    whatIsSiteBody: "A privacy-first local tool to convert, compress, and strip Exif metadata directly inside your browser with zero server uploads.<br><span style=\"display: inline-block; margin-top: 6px; font-size: 12px; color: #a5b4fc;\">*(Optional) Input your personal Cloudflare credentials (stored safely in local browser storage) to upload & share files. You can also seamlessly transfer and post media to Civitai via the Civitai API when logged into your account.</span>",
+    whatIsSiteBody: `
+      <div style="font-size: 13px; line-height: 1.6; color: var(--text);">
+        <p style="margin-bottom: 12px; font-weight: 500;">
+          <strong>BYOC (Bring Your Own Cloudflare) Converter</strong> is a 100% client-side privacy tool built for AI creators, ComfyUI artists, and privacy-conscious users. Convert, compress, and share images & videos right inside your browser without running any external server.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0;">
+          <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-weight: bold; color: #818cf8; margin-bottom: 3px;">🔒 100% Client-Side</div>
+            <div style="font-size: 11.5px; color: var(--muted);">All image conversions (WebP/JXL/JPEG) run locally via WebAssembly. Your files are never sent to any third-party servers.</div>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-weight: bold; color: #34d399; margin-bottom: 3px;">🧬 ComfyUI Workflows Intact</div>
+            <div style="font-size: 11.5px; color: var(--muted);">Preserves complete ComfyUI node graph workflows and API prompts in PNG, WebP, and MP4/WebM videos for 100% reproducible generation.</div>
+          </div>
+          <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 10px 12px;">
+            <div style="font-weight: bold; color: #38bdf8; margin-bottom: 3px;">⚡ Content Deduplication</div>
+            <div style="font-size: 11.5px; color: var(--muted);">Smart SHA-256 CAS deduplication saves your Cloudflare KV free tier (1GB) by automatically sharing underlying blob storage.</div>
+          </div>
+        </div>
+
+        <h4 style="font-size: 13.5px; font-weight: bold; color: #fff; margin: 16px 0 8px 0; display: flex; align-items: center; gap: 6px;">
+          🚀 Quick Setup Guide (3 Simple Steps)
+        </h4>
+
+        <ol style="margin: 0; padding-left: 20px; font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+          <li>
+            <strong>Step 1: Deploy your free Cloudflare Worker backend</strong><br>
+            Clone or fork the open-source backend from <a href="https://github.com/OKPN/byoc-worker" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline;">GitHub: OKPN/byoc-worker ↗</a> and deploy with <code>npx wrangler deploy</code> (runs entirely within Cloudflare's generous free tier).
+          </li>
+          <li>
+            <strong>Step 2: Obtain your Worker URL & API Token</strong><br>
+            Copy your deployed Worker endpoint URL (e.g., <code>https://byoc-worker.your-subdomain.workers.dev</code>) and the <code>API_TOKEN</code> you configured in your Cloudflare dashboard / wrangler secret.
+          </li>
+          <li>
+            <strong>Step 3: Connect in Settings Below</strong><br>
+            Open <strong>☁️ Cloudflare Connection Settings</strong> below, paste your URL and API Token, and click <strong>Save Settings</strong>. You are ready to share temporary links and upload directly to Civitai!
+          </li>
+        </ol>
+
+        <div style="margin-top: 14px; padding: 10px 12px; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 11.5px; color: var(--muted);">
+          <strong style="color: #fbbf24;">🛡️ Privacy & Security Guarantee:</strong><br>
+          Your Cloudflare credentials and files are stored strictly inside your browser's local storage (<code>localStorage</code>) and your personal Cloudflare account. The site author does not host, store, or view any of your files or tokens.
+        </div>
+      </div>
+    `,
     inputFiles: "Files",
     addFolder: "Add Folder",
     dropText: "Drop images or folders here",
