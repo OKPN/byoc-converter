@@ -2012,6 +2012,7 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
   try {
     const ttl = customTtl !== null ? String(customTtl) : (tempTtlSelect ? (tempTtlSelect.value || "259200") : "259200");
     const pwdInput = document.querySelector("#tempPasswordInput");
+    const password = customPassword !== null ? customPassword : (pwdInput ? pwdInput.value.trim() : "");
     const isConvertOn = enableConvertCheck?.checked ?? true;
     const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
     const origExt = originalFile ? originalFile.name.split('.').pop().toLowerCase() : "";
