@@ -1238,6 +1238,18 @@ clearButton?.addEventListener("click", () => {
 });
 
 // --- ComfyUI ワークフロー / 生成メタデータ検出ユーティリティ ---
+
+// 🧬 ファイルの中身（バイナリ）から純粋な SHA-256 ハッシュを計算（ファイル名は完全除外）
+async function getFileSha256(fileOrBlob) {
+  try {
+    const buf = await fileOrBlob.arrayBuffer();
+    const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  } catch (e) {
+    return null;
+  }
+}
+
 async function detectComfyMetadata(file) {
   if (!file) return { hasWorkflow: false, hasPrompt: false, hasA1111: false, type: "none" };
 
@@ -2041,7 +2053,7 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
     result.proxyUrl = getPublicUrl(data.url);
     result.storageKey = extractStorageKey(data.url || data.key || result.name);
 
-    // ワークフローの有無を記憶（変換OFFで元画像にWFがあれば保持される）
+    // ワークフローの有無および重複排除（SHA-256）を記憶
     try {
       const isConvertOn = enableConvertCheck?.checked ?? true;
       const originalFile = state.files.find(f => f.name === result.name || result.originalSize === f.size);
@@ -2051,6 +2063,24 @@ async function uploadImage(result, customTtl = null, customPassword = null) {
         if (result.storageKey) wfStore[result.storageKey] = true;
         if (result.name) wfStore[result.name] = true;
         localStorage.setItem("comfyWfMap", JSON.stringify(wfStore));
+      }
+
+      // 🧬 中身の純粋バイナリから SHA-256 ハッシュを算出して重複判定
+      if (result.blob) {
+        const fileSha = await getFileSha256(result.blob);
+        if (fileSha) {
+          let shaMap = JSON.parse(localStorage.getItem("uploadedShaMap") || "{}");
+          let dedupMap = JSON.parse(localStorage.getItem("dedupKeysMap") || "{}");
+          if (shaMap[fileSha]) {
+            // 同一中身のファイルが既にアップロード済み ➔ 重複排除フラグを記録
+            if (result.storageKey) dedupMap[result.storageKey] = true;
+            if (result.name) dedupMap[result.name] = true;
+            localStorage.setItem("dedupKeysMap", JSON.stringify(dedupMap));
+          } else {
+            shaMap[fileSha] = result.storageKey || result.name;
+            localStorage.setItem("uploadedShaMap", JSON.stringify(shaMap));
+          }
+        }
       }
     } catch (e) {}
 
@@ -2275,7 +2305,12 @@ async function fetchAndRenderR2Files() {
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; word-break: break-all;">${escapeHtml(file.filename)}</span>
             <span style="color: #64748b; font-size: 11px; white-space: nowrap;">${formatBytes(file.size)}</span>
-            ${file.deduped ? `<span class="meta-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 10px; padding: 1px 5px; border-radius: 4px;" title="既存の同一データ（SHA-256一致）を参照しているため、KVストレージ容量を追加消費していません。">⚡ 重複排除</span>` : ""}
+            ${(() => {
+              let dedupMap = {};
+              try { dedupMap = JSON.parse(localStorage.getItem("dedupKeysMap") || "{}"); } catch (e) {}
+              const isDedup = file.deduped || dedupMap[file.key] || dedupMap[file.filename];
+              return isDedup ? `<span class="meta-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 10px; padding: 1px 5px; border-radius: 4px;" title="中身が同一データ（SHA-256一致）のため、実体データを共有して容量を節約しています。">⚡ 重複排除</span>` : "";
+            })()}
             <span class="r2-wf-badge-placeholder" data-key="${escapeHtml(file.key)}"></span>
             <button type="button" class="rename-file-btn" data-key="${escapeHtml(file.key)}" title="ファイル名を変更" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 14px; opacity: 0.8; transition: opacity 0.15s; line-height: 1;">✏️</button>
             ${file.hasPassword ? `<span class="password-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;">🔒 ${file.password ? `パスワード: ${escapeHtml(file.password)}` : "パスワード保護"}</span>` : ""}
