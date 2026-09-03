@@ -570,6 +570,7 @@ async function fetchAndRenderCivitaiGallery() {
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; font-size: 12px; font-family: monospace;">ID: ${escapeHtml(String(item.id))}</span>
             <span class="format-badge" style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${isVideo ? "🎬 VIDEO" : "🖼️ IMAGE"}</span>
+            <span class="civitai-wf-badge-placeholder" data-id="${item.id}"></span>
             ${item.nsfwLevel && item.nsfwLevel !== "None" ? `<span style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(244, 63, 94, 0.15); color: #f43f5e; font-weight: bold;">${escapeHtml(item.nsfwLevel)}</span>` : ""}
             ${dimensions ? `<span style="color: #64748b; font-size: 11px;">${escapeHtml(dimensions)}</span>` : ""}
           </div>
@@ -584,6 +585,16 @@ async function fetchAndRenderCivitaiGallery() {
       `;
 
       civitaiGalleryList.append(article);
+
+      // Civitai メディア内のワークフローを非同期検知
+      checkCivitaiItemWf(item).then(hasWf => {
+        if (hasWf) {
+          const badgePlaceholder = article.querySelector('.civitai-wf-badge-placeholder');
+          if (badgePlaceholder) {
+            badgePlaceholder.innerHTML = '<span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIワークフローが完全な形で含まれています。">🧬 ワークフローあり</span>';
+          }
+        }
+      });
     });
   } catch (err) {
     console.error("Civitai gallery fetch error:", err);
