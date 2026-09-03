@@ -1409,7 +1409,9 @@ fileList?.addEventListener("click", async (event) => {
     target.disabled = true;
     target.textContent = "...";
     try {
-      if (!result) {
+      if (!result || !isConversionCacheValid()) {
+        if (result && result.url) URL.revokeObjectURL(result.url);
+        if (result && result.previewUrl) URL.revokeObjectURL(result.previewUrl);
         result = await convertImage(file, index);
         state.results[index] = result;
       }
@@ -1434,7 +1436,9 @@ fileList?.addEventListener("click", async (event) => {
     target.disabled = true;
     target.textContent = "UP中...";
     try {
-      if (!result) {
+      if (!result || !isConversionCacheValid()) {
+        if (result && result.url) URL.revokeObjectURL(result.url);
+        if (result && result.previewUrl) URL.revokeObjectURL(result.previewUrl);
         result = await convertImage(file, index);
         state.results[index] = result;
       }
@@ -1543,8 +1547,18 @@ function isConversionCacheValid() {
   return lastConvertedSignature === getCurrentConfigSignature();
 }
 
-function invalidateConversionCache() {
+function invalidateConversionCache(clearResults = true) {
   lastConvertedSignature = null;
+  if (clearResults && state.results.length > 0) {
+    state.results.forEach(result => {
+      if (result) {
+        if (result.url) URL.revokeObjectURL(result.url);
+        if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
+      }
+    });
+    state.results = [];
+    render();
+  }
 }
 
 // --- 画像変換処理 ---
