@@ -117,6 +117,10 @@ const i18nDict = {
     timeRemainingHours: "あと {h}時間 {m}分 で自動消滅",
     timeRemainingMinutes: "あと {m}分 で自動消滅",
     timeExpired: "消滅済み (期限切れ)",
+    civitaiModalTitle: "Civitai 投稿確認",
+    civitaiModalBody: "CivitaiのAPIを用いてログインしているCivitaiアカウントにメディアを投稿しますか？",
+    civitaiModalDoNotShow: "以後この確認を表示しない",
+    civitaiModalConfirm: "🎨 投稿する",
   },
   en: {
     siteTitle: "BYOC Converter",
@@ -215,6 +219,10 @@ const i18nDict = {
     timeRemainingHours: "Auto-expires in {h}h {m}m",
     timeRemainingMinutes: "Auto-expires in {m}m",
     timeExpired: "Expired",
+    civitaiModalTitle: "Confirm Civitai Post",
+    civitaiModalBody: "Do you want to post media to your logged-in Civitai account using the Civitai API?",
+    civitaiModalDoNotShow: "Do not show this confirmation again",
+    civitaiModalConfirm: "🎨 Post to Civitai",
   }
 };
 
@@ -252,6 +260,51 @@ const civitaiPanel = document.querySelector("#civitaiPanel");
 const civitaiGalleryList = document.querySelector("#civitaiGalleryList");
 const reloadCivitaiButton = document.querySelector("#reloadCivitaiButton");
 const civitaiProfileLink = document.querySelector("#civitaiProfileLink");
+
+function confirmCivitaiPost() {
+  return new Promise((resolve) => {
+    // 「以後この確認を表示しない」が保存されている場合は即スキップ
+    if (localStorage.getItem("skipCivitaiModal") === "true") {
+      resolve(true);
+      return;
+    }
+
+    const modal = document.querySelector("#civitaiConfirmModal");
+    const confirmBtn = document.querySelector("#civitaiConfirmBtn");
+    const cancelBtn = document.querySelector("#civitaiCancelBtn");
+    const skipCheck = document.querySelector("#civitaiSkipModalCheck");
+
+    if (!modal || !confirmBtn || !cancelBtn) {
+      resolve(true);
+      return;
+    }
+
+    if (skipCheck) skipCheck.checked = false;
+    modal.style.display = "grid";
+
+    const cleanUp = () => {
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+      modal.style.display = "none";
+    };
+
+    const onConfirm = () => {
+      if (skipCheck && skipCheck.checked) {
+        localStorage.setItem("skipCivitaiModal", "true");
+      }
+      cleanUp();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanUp();
+      resolve(false);
+    };
+
+    confirmBtn.addEventListener("click", onConfirm, { once: true });
+    cancelBtn.addEventListener("click", onCancel, { once: true });
+  });
+}
 
 function openCivitaiIntent(mediaUrl, title = "") {
   if (!mediaUrl) return;
@@ -1467,13 +1520,17 @@ fileList?.addEventListener("click", async (event) => {
   // 5. Civitai 転送（A案: リネーム無視で変換 ➔ 一時共有 ➔ Civitai Intent 自動セット起動）
   if (target.classList.contains("civitai-post-btn")) {
     if (isNaN(index) || index < 0 || index >= state.files.length) return;
-    const file = state.files[index];
-    let result = state.results[index];
 
     if (!updateCfStatus()) {
       alert("⚠️ Cloudflare 接続設定（Worker URLとAPIトークン）を設定して保存してください。");
       return;
     }
+
+    const confirmed = await confirmCivitaiPost();
+    if (!confirmed) return;
+
+    const file = state.files[index];
+    let result = state.results[index];
 
     target.disabled = true;
     target.textContent = "転送中...";
@@ -2297,6 +2354,8 @@ r2FileList?.addEventListener("click", async (event) => {
   }
 
   if (target.classList.contains("civitai-r2-post-btn")) {
+    const confirmed = await confirmCivitaiPost();
+    if (!confirmed) return;
     const mediaUrl = target.dataset.url;
     const name = target.dataset.name;
     openCivitaiIntent(mediaUrl, name);

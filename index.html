@@ -340,6 +340,28 @@
       </section>
     </main>
 
+    <!-- 🎨 Civitai 投稿確認モーダル -->
+    <div id="civitaiConfirmModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-content" style="max-width: 400px; text-align: center; padding: 24px;">
+        <h3 style="margin-top: 0; font-size: 16px; color: #38bdf8; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <span>🎨</span> <span data-i18n="civitaiModalTitle">Civitai 投稿確認</span>
+        </h3>
+        <p style="font-size: 13px; color: var(--text); margin: 14px 0; line-height: 1.6;" data-i18n="civitaiModalBody">
+          CivitaiのAPIを用いてログインしているCivitaiアカウントにメディアを投稿しますか？
+        </p>
+        <div style="margin: 16px 0 20px; text-align: left; background: rgba(255, 255, 255, 0.04); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
+          <label class="check-label-row" style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;">
+            <input type="checkbox" id="civitaiSkipModalCheck">
+            <span style="color: var(--muted);" data-i18n="civitaiModalDoNotShow">以後この確認を表示しない</span>
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="ghost-button" id="civitaiCancelBtn" type="button" style="flex: 1;" data-i18n="btnCancel">キャンセル</button>
+          <button class="primary-button" id="civitaiConfirmBtn" type="button" style="flex: 1.5; margin: 0; background: #0284c7; border-color: #38bdf8;" data-i18n="civitaiModalConfirm">🎨 投稿する</button>
+        </div>
+      </div>
+    </div>
+
     <!-- QRコード同期モーダル -->
     <div id="qrModal" class="modal-backdrop" style="display: none;">
       <div class="modal-content" style="max-width: 360px; text-align: center; padding: 24px;">
