@@ -342,14 +342,28 @@
 
     <!-- 🎨 Civitai 投稿確認モーダル -->
     <div id="civitaiConfirmModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-content" style="max-width: 400px; text-align: center; padding: 24px;">
+      <div class="modal-content" style="max-width: 440px; text-align: center; padding: 24px;">
         <h3 style="margin-top: 0; font-size: 16px; color: #38bdf8; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <span>🎨</span> <span data-i18n="civitaiModalTitle">Civitai 投稿確認</span>
         </h3>
-        <p style="font-size: 13px; color: var(--text); margin: 14px 0; line-height: 1.6;" data-i18n="civitaiModalBody">
+        <p style="font-size: 13px; color: var(--text); margin: 12px 0 10px; line-height: 1.5;" data-i18n="civitaiModalBody">
           CivitaiのAPIを用いてログインしているCivitaiアカウントにメディアを投稿しますか？
         </p>
-        <div style="margin: 16px 0 20px; text-align: left; background: rgba(255, 255, 255, 0.04); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
+
+        <!-- 免責・ToS確認ボックス -->
+        <div style="margin: 12px 0 16px; text-align: left; background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 8px; padding: 10px 12px; font-size: 11px; line-height: 1.55; color: var(--text-muted, #9ea3b0);">
+          <div style="font-weight: 600; color: #facc15; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+            <span>⚠️</span> <span data-i18n="civitaiModalNoticeTitle">投稿前の確認・免責事項</span>
+          </div>
+          <div data-i18n="civitaiModalNoticeBody">
+            Civitaiに投稿されるメディアの責任はすべて投稿者本人に帰属します。18歳以上であること、実在人物や未成年を描写していないこと、Civitaiの利用規約（ToS）を遵守していることをご確認の上、ご自身の責任で投稿を行ってください。
+          </div>
+          <div style="margin-top: 6px;">
+            <a href="https://civitai.com/content/tos" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline; font-size: 11px;" data-i18n="civitaiTosLink">Civitai 利用規約 (Terms of Service) ↗</a>
+          </div>
+        </div>
+
+        <div style="margin: 0 0 20px; text-align: left; background: rgba(255, 255, 255, 0.04); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);">
           <label class="check-label-row" style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;">
             <input type="checkbox" id="civitaiSkipModalCheck">
             <span style="color: var(--muted);" data-i18n="civitaiModalDoNotShow">以後この確認を表示しない</span>
