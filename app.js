@@ -1197,6 +1197,152 @@ clearButton?.addEventListener("click", () => {
   render();
 });
 
+// --- ComfyUI ワークフロー / 生成メタデータ検出ユーティリティ ---
+async function detectComfyMetadata(file) {
+  if (!file) return { hasWorkflow: false, hasPrompt: false, hasA1111: false, type: "none" };
+
+  const fileName = file.name.toLowerCase();
+  const isPng = fileName.endsWith(".png") || file.type === "image/png";
+  const isWebp = fileName.endsWith(".webp") || file.type === "image/webp";
+  const isMp4 = fileName.endsWith(".mp4") || file.type === "video/mp4";
+  const isWebm = fileName.endsWith(".webm") || file.type === "video/webm";
+
+  try {
+    // 最初の最大 4MB を読み込んでメタデータを探索
+    const sliceSize = Math.min(file.size, 4 * 1024 * 1024);
+    const buffer = await file.slice(0, sliceSize).arrayBuffer();
+
+    if (isPng) {
+      const view = new DataView(buffer);
+      if (view.getUint32(0) === 0x89504e47 && view.getUint32(4) === 0x0d0a1a0a) {
+        let offset = 8;
+        const length = buffer.byteLength;
+        let hasWorkflow = false;
+        let hasPrompt = false;
+        let hasA1111 = false;
+        let nodeCount = 0;
+
+        while (offset < length - 8) {
+          const chunkLength = view.getUint32(offset);
+          offset += 4;
+          const chunkType = String.fromCharCode(
+            view.getUint8(offset),
+            view.getUint8(offset + 1),
+            view.getUint8(offset + 2),
+            view.getUint8(offset + 3)
+          );
+          offset += 4;
+
+          if (chunkType === "IEND") break;
+
+          if (chunkType === "tEXt" || chunkType === "iTXt") {
+            const chunkData = new Uint8Array(buffer, offset, chunkLength);
+            let nullIndex = -1;
+            for (let i = 0; i < chunkData.length; i++) {
+              if (chunkData[i] === 0) { nullIndex = i; break; }
+            }
+            if (nullIndex > 0) {
+              const keyword = new TextDecoder("utf-8").decode(chunkData.subarray(0, nullIndex));
+              if (keyword === "workflow") {
+                hasWorkflow = true;
+                try {
+                  const text = new TextDecoder("utf-8").decode(chunkData.subarray(nullIndex + 1));
+                  const wfJson = JSON.parse(text);
+                  if (Array.isArray(wfJson.nodes)) {
+                    nodeCount = wfJson.nodes.length;
+                  }
+                } catch (e) {}
+              } else if (keyword === "prompt") {
+                hasPrompt = true;
+              } else if (keyword === "parameters") {
+                hasA1111 = true;
+              }
+            }
+          }
+
+          offset += chunkLength + 4; // データ + CRC
+        }
+
+        if (hasWorkflow) {
+          return { hasWorkflow: true, hasPrompt, hasA1111, nodeCount, type: "comfy_workflow" };
+        }
+        if (hasPrompt) {
+          return { hasWorkflow: false, hasPrompt: true, hasA1111, type: "comfy_prompt" };
+        }
+        if (hasA1111) {
+          return { hasWorkflow: false, hasPrompt: false, hasA1111: true, type: "a1111" };
+        }
+      }
+    }
+
+    // WebP, MP4, WebM またはその他のテキスト探索フォールバック
+    const textSample = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(buffer));
+    const hasWorkflowStr = textSample.includes('"nodes"') && textSample.includes('"workflow"') && textSample.includes('"links"');
+    const hasPromptStr = textSample.includes('"client_id"') || (textSample.includes('"inputs"') && textSample.includes('"class_type"'));
+
+    if (hasWorkflowStr) {
+      return { hasWorkflow: true, hasPrompt: hasPromptStr, hasA1111: false, type: "comfy_workflow" };
+    }
+    if (hasPromptStr) {
+      return { hasWorkflow: false, hasPrompt: true, hasA1111: false, type: "comfy_prompt" };
+    }
+    if (textSample.includes("Negative prompt:") || textSample.includes("Steps: ")) {
+      return { hasWorkflow: false, hasPrompt: false, hasA1111: true, type: "a1111" };
+    }
+
+  } catch (err) {
+    console.warn("Metadata detection error:", err);
+  }
+
+  return { hasWorkflow: false, hasPrompt: false, hasA1111: false, type: "none" };
+}
+
+function createComfyBadgeHtml(file, result) {
+  const meta = file.metaStatus;
+  if (!meta) return '<div style="font-size: 10px; color: var(--muted); margin-top: 3px;">🔍 メタデータ解析中...</div>';
+
+  const isConvertOn = enableConvertCheck?.checked ?? true;
+
+  let badge = "";
+  if (meta.hasWorkflow) {
+    badge = `
+      <span class="meta-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="ComfyUIのワークフロー（ノード接続・配置情報）が完全な形で含まれています。ComfyUI画面にドロップすると完全再現可能です。">
+        <span>🧬 ComfyUI ワークフロー完全内包</span>
+        ${meta.nodeCount ? `<span style="font-size: 9.5px; opacity: 0.85;">(${meta.nodeCount}ノード)</span>` : ""}
+      </span>
+    `;
+  } else if (meta.hasPrompt) {
+    badge = `
+      <span class="meta-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 600;" title="ComfyUIのプロンプト/API情報が含まれています。">
+        📝 ComfyUI プロンプト情報あり
+      </span>
+    `;
+  } else if (meta.hasA1111) {
+    badge = `
+      <span class="meta-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 600;" title="WebUI (A1111) 生成パラメータが含まれています。">
+        📋 WebUI (A1111) 生成情報あり
+      </span>
+    `;
+  } else {
+    badge = `
+      <span class="meta-badge" style="background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid var(--border); font-size: 10px; padding: 1px 5px; border-radius: 4px;" title="ワークフローメタデータは検出されませんでした（Exif削除済みまたは非AI画像）。">
+        ⚪ ワークフローなし
+      </span>
+    `;
+  }
+
+  let statusNotice = "";
+  if (meta.hasWorkflow) {
+    if (isConvertOn) {
+      statusNotice = '<span style="font-size: 10px; color: #f87171; margin-left: 4px;" title="画像を変換（再エンコード）するとブラウザの仕様によりワークフローは削除されます。保持したい場合は『画像を変換する』をOFFにしてください。">⚠️ 変換ONのためExif/WFは削除されます</span>';
+    } else {
+      statusNotice = '<span style="font-size: 10px; color: #34d399; margin-left: 4px;">🛡️ ワークフロー保持のまま保存/共有されます</span>';
+    }
+  }
+
+  return `<div class="comfy-meta-row" style="margin-top: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">${badge}${statusNotice}</div>`;
+}
+
 function addFiles(files) {
   const allowed = files.filter((file) => {
     return file.type.startsWith("image/") || 
