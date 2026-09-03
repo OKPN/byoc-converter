@@ -1500,6 +1500,7 @@ function render() {
         <div class="item-info-col" style="flex: 1; min-width: 0;">
           <div class="item-name" style="font-weight: 600; font-size: 13px;">${escapeHtml(currentName)}</div>
           <div class="item-meta" style="font-size: 11px; margin-top: 2px;">${metaHtml}</div>
+          ${createComfyBadgeHtml(file, result)}
           ${warnNotice}
         </div>
         <div class="item-actions-col" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
