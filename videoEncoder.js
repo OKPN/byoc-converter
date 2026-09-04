@@ -74,55 +74,57 @@ export async function getGpuInfo() {
 }
 
 /**
- * Check if the browser and GPU strictly support hardware AV1 encoding via WebCodecs
+ * Check if the browser and GPU support AV1 encoding via WebCodecs
  */
 export async function checkAv1EncoderSupport() {
   // 1. Mobile devices are strictly excluded
   if (isMobileDevice()) {
-    return { supported: false, isHardware: false, isMobile: true, reason: "Mobile device excluded" };
+    return { supported: false, isHardware: false, isMobile: true, reason: "スマホ/タブレット環境のため無効化されています" };
   }
 
   const gpuInfo = await getGpuInfo();
 
   if (typeof window === "undefined" || !("VideoEncoder" in window)) {
-    return { supported: false, isHardware: false, gpuInfo, reason: "WebCodecs VideoEncoder not available" };
+    return { supported: false, isHardware: false, gpuInfo, reason: "お使いのブラウザは WebCodecs API に未対応です" };
   }
 
-  // 2. Strictly check PHYSICAL GPU hardware acceleration (require-hardware)
-  // Rejects software codecs, old Radeons (RX 6000 and earlier), old GeForces (RTX 30 and earlier), etc.
-  const testConfigs = [
-    {
-      codec: "av01.0.04M.08", // AV1 Main Profile, Level 2.0, 8-bit
-      width: 1280,
-      height: 720,
-      bitrate: 2_500_000,
-      framerate: 30,
-      hardwareAcceleration: "require-hardware",
-    },
-    {
-      codec: "av01.0.05M.08",
-      width: 1280,
-      height: 720,
-      bitrate: 2_500_000,
-      framerate: 30,
-      hardwareAcceleration: "require-hardware",
-    }
+  // 2. Check configs across standard AV1 profiles and acceleration modes
+  // Chromium prefers "prefer-hardware" to invoke NVENC/VCN/QSV without rejecting experimental flags
+  const codecs = [
+    "av01.0.04M.08", // Main Profile, Level 2.0, 8-bit
+    "av01.0.05M.08", // Main Profile, Level 2.1, 8-bit
+    "av01.0.08M.08", // Main Profile, Level 3.0, 8-bit
+    "av01.0.00M.08", // Main Profile, Level auto, 8-bit
   ];
 
-  for (const config of testConfigs) {
-    try {
-      const support = await VideoEncoder.isConfigSupported(config);
-      if (support && support.supported) {
-        return {
-          supported: true,
-          isHardware: true,
-          gpuInfo,
-          codec: config.codec,
-          config: support.config,
+  const accelModes = ["prefer-hardware", "require-hardware", "no-preference"];
+
+  for (const accel of accelModes) {
+    for (const codec of codecs) {
+      try {
+        const testConfig = {
+          codec,
+          width: 1280,
+          height: 720,
+          bitrate: 2_500_000,
+          framerate: 30,
+          hardwareAcceleration: accel,
         };
+        const support = await VideoEncoder.isConfigSupported(testConfig);
+        if (support && support.supported) {
+          const isHw = support.config?.hardwareAcceleration !== "prefer-software";
+          return {
+            supported: true,
+            isHardware: isHw,
+            gpuInfo,
+            codec,
+            accelMode: accel,
+            config: support.config,
+          };
+        }
+      } catch (e) {
+        // Continue checking
       }
-    } catch (e) {
-      // Hardware encoder not available or config rejected
     }
   }
 
@@ -130,7 +132,7 @@ export async function checkAv1EncoderSupport() {
     supported: false,
     isHardware: false,
     gpuInfo,
-    reason: "No physical AV1 hardware encoder (NVENC 8th / VCN 4.0 / QSV AV1) detected",
+    reason: "お使いのブラウザ/環境で AV1 エンコードがサポートされていません",
   };
 }
 
@@ -359,7 +361,7 @@ export async function encodeVideoToAv1({
     framerate: fps,
     bitrateMode: "variable", // VBR
     latencyMode: "quality",
-    hardwareAcceleration: "require-hardware",
+    hardwareAcceleration: support.accelMode || "prefer-hardware",
   };
 
   videoEncoder.configure(encoderConfig);

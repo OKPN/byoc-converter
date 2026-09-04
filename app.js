@@ -547,24 +547,55 @@ async function updateVideoEstSize() {
 }
 
 async function initAv1VideoSupport() {
+  const badge = document.querySelector("#videoGpuBadge");
+  const helpText = document.querySelector("#videoGpuHelpText");
+
   try {
     const support = await checkAv1EncoderSupport();
-    if (support && support.supported && support.isHardware && videoSettingsGroup) {
-      videoSettingsGroup.style.display = "block";
-      const titleSpan = videoSettingsGroup.querySelector(".section-label-text");
-      if (titleSpan) {
-        const gpuName = support.gpuInfo?.cleanName || "GPU加速";
-        titleSpan.innerHTML = `🎥 動画を AV1 で軽量化 <span style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-left: 6px; padding: 1px 6px; background: rgba(56, 189, 248, 0.12); border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3);">⚡ ${escapeHtml(gpuName)}</span>`;
-      }
-    } else {
+    
+    // 1. スマホ/タブレットは完全非表示
+    if (support.isMobile) {
       if (videoSettingsGroup) videoSettingsGroup.style.display = "none";
-      if (!support?.isMobile) {
-        console.info(`[BYOC] AV1 GPU Video Encoder disabled: ${support?.reason || "Unsupported"} (GPU: ${support?.gpuInfo?.cleanName || "Unknown"})`);
+      return;
+    }
+
+    // 2. PC環境ではグループを常に表示
+    if (videoSettingsGroup) videoSettingsGroup.style.display = "block";
+
+    if (support && support.supported) {
+      const gpuName = support.gpuInfo?.cleanName || "GPU加速";
+      if (badge) {
+        badge.textContent = `⚡ ${gpuName}`;
+        badge.style.color = "#38bdf8";
+        badge.style.borderColor = "rgba(56, 189, 248, 0.4)";
+        badge.style.background = "rgba(56, 189, 248, 0.12)";
+        badge.title = `AV1ハードウェア加速が有効です (${support.codec})`;
+      }
+      if (helpText) helpText.style.display = "none";
+      if (enableVideoAv1Check) enableVideoAv1Check.disabled = false;
+    } else {
+      const gpuName = support?.gpuInfo?.cleanName || "不明";
+      if (badge) {
+        badge.textContent = `⚠️ AV1非対応 (${gpuName})`;
+        badge.style.color = "#fbbf24";
+        badge.style.borderColor = "rgba(251, 191, 36, 0.4)";
+        badge.style.background = "rgba(251, 191, 36, 0.12)";
+      }
+      if (helpText) {
+        helpText.style.display = "block";
+        helpText.textContent = `ℹ️ ${support?.reason || "AV1エンコード未対応"} (GPU: ${gpuName})`;
+      }
+      if (enableVideoAv1Check) {
+        enableVideoAv1Check.checked = false;
+        enableVideoAv1Check.disabled = true;
+      }
+      if (videoSettingsArea) {
+        videoSettingsArea.style.display = "none";
       }
     }
   } catch (e) {
-    console.debug("AV1 support check failed:", e);
-    if (videoSettingsGroup) videoSettingsGroup.style.display = "none";
+    console.debug("AV1 support check error:", e);
+    if (badge) badge.textContent = "未検出";
   }
 }
 

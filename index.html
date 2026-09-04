@@ -150,11 +150,15 @@
               </div>
 
               <!-- 🎥 動画の AV1 GPU 軽量化設定 (PC & WebCodecs対応時) -->
-              <div class="toggle-control-group" id="videoSettingsGroup" style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); padding-top: 10px; display: none;">
-                <label class="check-label-row">
-                  <input type="checkbox" id="enableVideoAv1Check" checked>
-                  <span class="section-label-text" data-i18n="enableVideoAv1">🎥 動画を AV1 で軽量化 (GPU)</span>
+              <div class="toggle-control-group" id="videoSettingsGroup" style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); padding-top: 10px;">
+                <label class="check-label-row" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="enableVideoAv1Check" checked>
+                    <span class="section-label-text" data-i18n="enableVideoAv1">🎥 動画を AV1 で軽量化</span>
+                  </div>
+                  <span id="videoGpuBadge" style="font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8;">GPU検出中...</span>
                 </label>
+                <div id="videoGpuHelpText" style="display: none; font-size: 11px; color: #f87171; margin-top: 4px; padding: 4px 8px; background: rgba(239, 68, 68, 0.08); border-radius: 4px;"></div>
 
                 <div id="videoSettingsArea" class="toggle-sub-area" style="margin-top: 8px;">
                   <!-- コンテナ形式: MP4 / WebM -->
