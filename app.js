@@ -1106,6 +1106,7 @@ cfClearButton?.addEventListener("click", () => {
   if (cfUploadToken) cfUploadToken.value = "";
   if (cfDirectDomain) cfDirectDomain.value = "";
 
+  renderCfDomainSelect();
   updateCfStatus();
   render();
   fetchAndRenderR2Files(); // クリア時も表示を更新
