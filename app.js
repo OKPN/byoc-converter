@@ -299,8 +299,14 @@ const statusText = document.querySelector("#statusText");
 // ☁️ Cloudflare 情報フォーム要素
 const cfEndpoint = document.querySelector("#cfEndpoint");
 const cfToken = document.querySelector("#cfToken");
-const cfUploadToken = document.querySelector("#cfUploadToken");
-const cfDirectDomain = document.querySelector("#cfDirectDomain");
+const cfDirectDomain = document.querySelector("#cfDirectDomain"); // 互換性
+const cfDomainSelect = document.querySelector("#cfDomainSelect");
+const cfDomainAddBtn = document.querySelector("#cfDomainAddBtn");
+const cfDomainDeleteBtn = document.querySelector("#cfDomainDeleteBtn");
+const cfDomainAddForm = document.querySelector("#cfDomainAddForm");
+const cfDomainNewInput = document.querySelector("#cfDomainNewInput");
+const cfDomainNewSaveBtn = document.querySelector("#cfDomainNewSaveBtn");
+const cfDomainNewCancelBtn = document.querySelector("#cfDomainNewCancelBtn");
 const civitaiUsername = document.querySelector("#civitaiUsername");
 const cfStatus = document.querySelector("#cfStatus");
 const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
@@ -692,6 +698,7 @@ function loadSettings() {
   if (cfDirectDomain) cfDirectDomain.value = savedDirect;
   if (civitaiUsername) civitaiUsername.value = savedCivitaiUser;
 
+  renderCfDomainSelect();
   updateCfStatus();
   updateCivitaiStatus();
 
@@ -938,6 +945,124 @@ cfEndpoint?.addEventListener("input", saveCfSettingsAuto);
 cfToken?.addEventListener("input", saveCfSettingsAuto);
 cfUploadToken?.addEventListener("input", saveCfSettingsAuto);
 cfDirectDomain?.addEventListener("input", saveCfSettingsAuto);
+
+// 🌐 直リンク配信ドメイン一覧の管理 & プルダウン連動
+function renderCfDomainSelect() {
+  if (!cfDomainSelect) return;
+  let domainList = [];
+  try {
+    domainList = JSON.parse(localStorage.getItem("cfDomainList") || "[]");
+  } catch (e) {
+    domainList = [];
+  }
+
+  // デフォルト候補として content-relay.pages.dev を初回投入
+  const defaultPagesDomain = "https://content-relay.pages.dev";
+  if (!domainList.includes(defaultPagesDomain)) {
+    domainList.unshift(defaultPagesDomain);
+    localStorage.setItem("cfDomainList", JSON.stringify(domainList));
+  }
+
+  const currentDomain = (localStorage.getItem("cfDirectDomain") || "").trim().replace(/\/$/, "");
+
+  // 既存の保存値があればリストにも保持
+  if (currentDomain && !domainList.includes(currentDomain)) {
+    domainList.push(currentDomain);
+    localStorage.setItem("cfDomainList", JSON.stringify(domainList));
+  }
+
+  cfDomainSelect.innerHTML = `<option value="">(標準) Worker URL をそのまま使用</option>` +
+    domainList.map(d => `<option value="${escapeHtml(d)}"${d === currentDomain ? " selected" : ""}>${escapeHtml(d)}</option>`).join("");
+
+  if (cfDomainDeleteBtn) {
+    cfDomainDeleteBtn.disabled = !currentDomain;
+    cfDomainDeleteBtn.style.opacity = currentDomain ? "1" : "0.35";
+    cfDomainDeleteBtn.style.cursor = currentDomain ? "pointer" : "not-allowed";
+  }
+}
+
+cfDomainSelect?.addEventListener("change", () => {
+  const val = cfDomainSelect.value.trim();
+  if (val) {
+    localStorage.setItem("cfDirectDomain", val);
+  } else {
+    localStorage.removeItem("cfDirectDomain");
+  }
+  if (cfDirectDomain) cfDirectDomain.value = val;
+  renderCfDomainSelect();
+  updateCfStatus();
+});
+
+cfDomainAddBtn?.addEventListener("click", () => {
+  if (!cfDomainAddForm) return;
+  const isOpen = cfDomainAddForm.style.display === "flex";
+  cfDomainAddForm.style.display = isOpen ? "none" : "flex";
+  if (!isOpen && cfDomainNewInput) {
+    cfDomainNewInput.value = "";
+    cfDomainNewInput.focus();
+  }
+});
+
+cfDomainNewCancelBtn?.addEventListener("click", () => {
+  if (cfDomainAddForm) cfDomainAddForm.style.display = "none";
+});
+
+cfDomainNewSaveBtn?.addEventListener("click", () => {
+  let val = cfDomainNewInput?.value?.trim() || "";
+  if (!val) return;
+  if (!val.startsWith("http://") && !val.startsWith("https://")) {
+    val = "https://" + val;
+  }
+  val = val.replace(/\/$/, "");
+
+  let domainList = [];
+  try {
+    domainList = JSON.parse(localStorage.getItem("cfDomainList") || "[]");
+  } catch (e) {
+    domainList = [];
+  }
+
+  if (!domainList.includes(val)) {
+    domainList.push(val);
+    localStorage.setItem("cfDomainList", JSON.stringify(domainList));
+  }
+
+  localStorage.setItem("cfDirectDomain", val);
+  if (cfDirectDomain) cfDirectDomain.value = val;
+  renderCfDomainSelect();
+  updateCfStatus();
+  if (cfDomainAddForm) cfDomainAddForm.style.display = "none";
+});
+
+cfDomainNewInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    cfDomainNewSaveBtn?.click();
+  } else if (e.key === "Escape") {
+    cfDomainNewCancelBtn?.click();
+  }
+});
+
+cfDomainDeleteBtn?.addEventListener("click", () => {
+  const current = (localStorage.getItem("cfDirectDomain") || "").trim();
+  if (!current) return;
+  if (!confirm(`選択中の配信ドメイン「${current}」を一覧から削除しますか？`)) return;
+
+  let domainList = [];
+  try {
+    domainList = JSON.parse(localStorage.getItem("cfDomainList") || "[]");
+  } catch (e) {
+    domainList = [];
+  }
+
+  domainList = domainList.filter(d => d !== current);
+  localStorage.setItem("cfDomainList", JSON.stringify(domainList));
+  localStorage.removeItem("cfDirectDomain");
+  if (cfDirectDomain) cfDirectDomain.value = "";
+
+  renderCfDomainSelect();
+  updateCfStatus();
+});
 
 // 🎨 Civitai ユーザー名の独立イベントリスナー (インライン入力時に自動保存 & ギャラリー更新)
 let civitaiFetchTimer = null;
