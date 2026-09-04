@@ -48,6 +48,7 @@ const i18nDict = {
     ttl3d: "3日間 (72時間後消滅)",
     ttl7d: "7日間 (168時間後消滅)",
     cfTitle: "☁️ Cloudflare 接続設定",
+    cfConnected: "Cloudflare 接続成功",
     cfEndpointLabel: "Worker エンドポイント URL",
     cfEndpointSub: "自分の Cloudflare Worker の URL",
     cfTokenLabel: "API トークン",
@@ -206,6 +207,7 @@ const i18nDict = {
     ttl3d: "3 Days (expires in 72h)",
     ttl7d: "7 Days (expires in 168h)",
     cfTitle: "☁️ Cloudflare Connection Settings",
+    cfConnected: "Cloudflare Connected",
     cfEndpointLabel: "Worker Endpoint URL",
     cfEndpointSub: "URL of your Cloudflare Worker",
     cfTokenLabel: "API Token",
@@ -439,6 +441,7 @@ function updateUiTranslations(lang) {
     }
   });
   render();
+  fetchAndRenderR2Files();
 }
 
 langSelect?.addEventListener("change", (e) => {
@@ -2763,7 +2766,10 @@ async function fetchAndRenderR2Files() {
 
     r2FileList.innerHTML = "";
     if (!publicFiles.length) {
-      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: #38bdf8; font-weight: 600; display: block; text-align: center;">Cloudflare接続成功</span>`;
+      const lang = getAppLanguage();
+      const dict = i18nDict[lang] || i18nDict.ja;
+      const msg = dict.cfConnected || "Cloudflare 接続成功";
+      r2FileList.innerHTML = `<span class="item-meta" style="padding: 18px; color: #38bdf8; font-weight: 600; display: block; text-align: center;">${escapeHtml(msg)}</span>`;
       return;
     }
 
