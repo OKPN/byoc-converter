@@ -55,9 +55,15 @@ const i18nDict = {
     cfDomainLabel: "直リンク配信ドメイン",
     cfDomainSub: "未入力の場合は Worker URL をそのまま使用",
     btnSave: "保存する",
-    btnShareQr: "📱 スマホ共有",
+    btnShareQr: "📱 スマホ共有 (QR)",
     btnPinBackup: "🔗 PINバックアップ",
     btnClear: "クリア",
+    topbarSyncBtn: "📱 スマホ共有 / バックアップ",
+    dataSyncHeading: "📦 設定の引き継ぎ & スマホ共有",
+    dataSyncDesc: "Civitai ウォッチリスト、配信ドメイン、Cloudflare 接続情報、画像変換設定を別の端末やスマホへ安全に引き継ぎます。",
+    btnClearAllData: "🗑️ 全クリア",
+    qrModalTitle: "📱 スマホ/別端末でスキャン",
+    qrModalSub: "スマホのカメラ等で下記QRコードを読み取ると、Civitaiウォッチリストや接続設定が安全に直接引き継がれます。",
     kvLimitNotice: "ℹ️ Cloudflare KV の仕様上、一時共有は1ファイル最大 <strong style=\"color: #fff;\">25MB</strong> までとなります。<br><span style=\"font-size: 10.5px; color: #818cf8; display: inline-block; margin-top: 2px;\">※ Civitai へのアップロード最大容量は Civitai の規約・仕様に従います。</span>",
     btnUpload: "🟩 アップロード",
     btnConvertUpload: "🟩 アップロード",
@@ -207,9 +213,15 @@ const i18nDict = {
     cfDomainLabel: "Custom Direct Domain",
     cfDomainSub: "Uses Worker URL if left empty",
     btnSave: "Save Settings",
-    btnShareQr: "📱 Share to Phone",
+    btnShareQr: "📱 Share to Phone (QR)",
     btnPinBackup: "🔗 PIN Backup",
     btnClear: "Clear",
+    topbarSyncBtn: "📱 Sync / Backup",
+    dataSyncHeading: "📦 Settings Sync & Mobile Sharing",
+    dataSyncDesc: "Securely sync Civitai creators watch list, delivery domains, Cloudflare connection, and converter settings to mobile or other devices.",
+    btnClearAllData: "🗑️ Clear All",
+    qrModalTitle: "📱 Scan with Mobile / Other Device",
+    qrModalSub: "Scan this QR code with your mobile camera to securely transfer your Civitai watch list, connection settings, and preferences.",
     kvLimitNotice: "ℹ️ Due to Cloudflare KV specifications, temporary sharing is up to <strong style=\"color: #fff;\">25MB per file</strong>.<br><span style=\"font-size: 10.5px; color: #818cf8; display: inline-block; margin-top: 2px;\">* Max upload size for Civitai follows Civitai terms and policies.</span>",
     btnUpload: "🟩 Upload",
     btnConvertUpload: "🟩 Upload",
@@ -332,6 +344,8 @@ const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
 const cfSaveButton = document.querySelector("#cfSaveButton");
 const cfClearButton = document.querySelector("#cfClearButton");
 const cfShareQrButton = document.querySelector("#cfShareQrButton");
+const topbarSyncButton = document.querySelector("#topbarSyncButton");
+const globalClearButton = document.querySelector("#globalClearButton");
 
 // 🎨 Civitai ギャラリー要素
 const civitaiPanel = document.querySelector("#civitaiPanel");
@@ -980,24 +994,102 @@ function generateRandom6DigitPin() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// --- 📦 アプリ統合データのエクスポート & インポート (Cloudflare / Civitai / 変換設定) ---
+
+function buildAppExportPayload() {
+  const endpoint    = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim();
+  const token       = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
+  const uploadToken = (localStorage.getItem("cfUploadToken") || cfUploadToken?.value || "").trim();
+  const direct      = (localStorage.getItem("cfDirectDomain") || cfDirectDomain?.value || "").trim();
+  let domainList = [];
+  try {
+    domainList = JSON.parse(localStorage.getItem("cfDomainList") || "[]");
+  } catch (e) {}
+
+  const currentCivitaiUser = getCurrentCivitaiUser();
+  const civitaiUserList = getCivitaiUserList();
+
+  const payload = { v: 2 };
+  if (endpoint) payload.e = endpoint;
+  if (token) payload.t = token;
+  if (uploadToken) payload.ut = uploadToken;
+  if (direct) payload.d = direct;
+  if (domainList.length > 0) payload.dl = domainList;
+
+  if (currentCivitaiUser) payload.cu = currentCivitaiUser;
+  if (civitaiUserList.length > 0) payload.cul = civitaiUserList;
+
+  const enableConvert = localStorage.getItem("enableConvert");
+  if (enableConvert !== null) payload.conv = (enableConvert === "true");
+
+  return payload;
+}
+
+function applyAppImportPayload(payload) {
+  if (!payload || typeof payload !== "object") return false;
+
+  let hasRestoredAny = false;
+
+  // 1. Cloudflare 設定
+  if (payload.e && payload.t) {
+    localStorage.setItem("cfEndpoint", payload.e);
+    localStorage.setItem("cfToken", payload.t);
+    if (cfEndpoint) cfEndpoint.value = payload.e;
+    if (cfToken) cfToken.value = payload.t;
+    hasRestoredAny = true;
+  }
+  if (payload.ut) {
+    localStorage.setItem("cfUploadToken", payload.ut);
+    if (cfUploadToken) cfUploadToken.value = payload.ut;
+  }
+  if (payload.d) {
+    localStorage.setItem("cfDirectDomain", payload.d);
+    if (cfDirectDomain) cfDirectDomain.value = payload.d;
+  }
+  if (Array.isArray(payload.dl) && payload.dl.length > 0) {
+    localStorage.setItem("cfDomainList", JSON.stringify(payload.dl));
+  }
+
+  // 2. Civitai 設定
+  if (Array.isArray(payload.cul) && payload.cul.length > 0) {
+    localStorage.setItem("civitaiUserList", JSON.stringify(payload.cul));
+    hasRestoredAny = true;
+  }
+  if (payload.cu) {
+    localStorage.setItem("civitaiUsername", payload.cu);
+    hasRestoredAny = true;
+  } else if (Array.isArray(payload.cul) && payload.cul.length > 0) {
+    localStorage.setItem("civitaiUsername", payload.cul[0]);
+    hasRestoredAny = true;
+  }
+
+  // 3. 変換設定
+  if (payload.conv !== undefined) {
+    localStorage.setItem("enableConvert", String(payload.conv));
+    if (enableConvertCheck) enableConvertCheck.checked = Boolean(payload.conv);
+  }
+
+  // UI へ再反映
+  loadSettings();
+  renderCfDomainSelect();
+  renderCivitaiUserSelect();
+  fetchAndRenderCivitaiGallery();
+  updateCfStatus();
+  updateCivitaiStatus();
+
+  return hasRestoredAny;
+}
+
 // PINコード付き暗号化バックアップURLの自動発行
 async function generatePinBackupUrl() {
-  const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim();
-  const token    = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
-  const direct   = (localStorage.getItem("cfDirectDomain") || cfDirectDomain?.value || "").trim();
-
-  if (!endpoint || !token) {
-    alert("⚠️ Worker URL と API トークンを入力して保存してから発行してください");
+  const payload = buildAppExportPayload();
+  const hasData = payload.e || payload.cu || (payload.cul && payload.cul.length > 0);
+  if (!hasData) {
+    alert("⚠️ バックアップする設定（Cloudflare設定またはCivitaiクリエイターリスト）がありません。");
     return;
   }
 
   const autoPin = generateRandom6DigitPin();
-  const payload = {
-    e: endpoint,
-    t: token,
-    d: direct,
-  };
-
   const encrypted = encryptPayloadWithPin(payload, autoPin);
   const backupUrl = `${window.location.origin}${window.location.pathname}#enc=${encrypted}`;
 
@@ -1040,19 +1132,7 @@ function checkAndApplyHashSync() {
         const jsonStr = decodeURIComponent(atob(encoded));
         const payload = JSON.parse(jsonStr);
 
-        if (payload && payload.e && payload.t) {
-          localStorage.setItem("cfEndpoint", payload.e);
-          localStorage.setItem("cfToken", payload.t);
-          if (payload.d) {
-            localStorage.setItem("cfDirectDomain", payload.d);
-          } else {
-            localStorage.removeItem("cfDirectDomain");
-          }
-
-          if (cfEndpoint) cfEndpoint.value = payload.e;
-          if (cfToken) cfToken.value = payload.t;
-          if (cfDirectDomain) cfDirectDomain.value = payload.d || "";
-
+        if (applyAppImportPayload(payload)) {
           // 即座に URL から #sync=... を消去して痕跡を消す！
           history.replaceState(null, "", window.location.pathname + window.location.search);
         }
@@ -1373,20 +1453,15 @@ copyCurlCmdBtn?.addEventListener("click", () => {
 });
 
 // --- 📱 可視光スキャン（QRコード）同期ハンドラ ---
-cfShareQrButton?.addEventListener("click", async () => {
-  const endpoint = (localStorage.getItem("cfEndpoint") || cfEndpoint?.value || "").trim();
-  const token    = (localStorage.getItem("cfToken") || cfToken?.value || "").trim();
-  const direct   = (localStorage.getItem("cfDirectDomain") || cfDirectDomain?.value || "").trim();
-
-  if (!endpoint || !token) {
-    alert("⚠️ Worker URL と API トークンを保存してから画面共有を押してください。");
+async function openSyncQrModal() {
+  const payload = buildAppExportPayload();
+  const hasData = payload.e || payload.cu || (payload.cul && payload.cul.length > 0);
+  if (!hasData) {
+    alert("⚠️ 引き継ぐ設定（Cloudflare接続設定またはCivitaiクリエイターリスト）がありません。");
     return;
   }
 
   try {
-    const payload = { e: endpoint, t: token };
-    if (direct) payload.d = direct;
-
     const jsonStr = JSON.stringify(payload);
     const encoded = btoa(encodeURIComponent(jsonStr));
 
@@ -1408,6 +1483,15 @@ cfShareQrButton?.addEventListener("click", async () => {
     console.error("QR Code generation error:", err);
     alert("QRコードの生成に失敗しました。");
   }
+}
+
+cfShareQrButton?.addEventListener("click", openSyncQrModal);
+topbarSyncButton?.addEventListener("click", openSyncQrModal);
+
+globalClearButton?.addEventListener("click", () => {
+  if (!confirm("⚠️ アプリに保存された全設定（Cloudflare接続情報、Civitaiウォッチリスト、変換設定等）を消去して初期化しますか？")) return;
+  localStorage.clear();
+  location.reload();
 });
 
 closeQrModalButton?.addEventListener("click", () => {
@@ -3525,24 +3609,11 @@ submitPinButton?.addEventListener("click", () => {
   }
 
   const payload = decryptPayloadWithPin(pendingEncryptedHash, pin);
-  if (!payload || !payload.e || !payload.t) {
+  if (!payload || !applyAppImportPayload(payload)) {
     if (pinErrorNotice) pinErrorNotice.textContent = "⚠️ PINコードが正しくないか、データが破損しています";
     return;
   }
 
-  localStorage.setItem("cfEndpoint", payload.e);
-  localStorage.setItem("cfToken", payload.t);
-  if (payload.d) {
-    localStorage.setItem("cfDirectDomain", payload.d);
-  } else {
-    localStorage.removeItem("cfDirectDomain");
-  }
-
-  if (cfEndpoint) cfEndpoint.value = payload.e;
-  if (cfToken) cfToken.value = payload.t;
-  if (cfDirectDomain) cfDirectDomain.value = payload.d || "";
-
-  updateCfStatus();
   render();
 
   // URL から #enc=... を即座に消去
@@ -3551,7 +3622,7 @@ submitPinButton?.addEventListener("click", () => {
   } catch (e) {}
 
   if (pinModal) pinModal.style.display = "none";
-  alert("🎉 PIN認証に成功しました！Cloudflare 接続設定を完全に復元・保存いたしました");
+  alert("🎉 PIN認証に成功しました！設定（Civitaiウォッチリスト・Cloudflare接続等）を完全に復元・保存いたしました");
 });
 
 cancelPinButton?.addEventListener("click", () => {
