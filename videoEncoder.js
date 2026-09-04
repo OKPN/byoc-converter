@@ -28,32 +28,38 @@ export function isMobileDevice() {
  * Get GPU hardware renderer string via WebGL debug extension or WebGPU
  */
 export async function getGpuInfo() {
-  if (typeof window === "undefined") return { raw: "Unknown", cleanName: "Unknown", vendor: "Unknown" };
+  if (typeof window === "undefined") return { raw: "Unknown", cleanName: "Unknown", vendor: "Unknown", isSoftware: false };
 
   let renderer = "";
   let vendor = "";
 
-  // 1. Try WebGPU if available
+  // 1. Try WebGPU with high-performance preference first (requests discrete GPU like RTX 5070 Ti)
   try {
     if ("gpu" in navigator) {
-      const adapter = await navigator.gpu.requestAdapter();
+      const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
       if (adapter && adapter.info) {
         vendor = adapter.info.vendor || "";
-        renderer = `${adapter.info.vendor || ""} ${adapter.info.architecture || ""} ${adapter.info.device || ""}`.trim();
+        const desc = adapter.info.description || adapter.info.device || "";
+        renderer = `${adapter.info.vendor || ""} ${adapter.info.architecture || ""} ${desc}`.trim();
       }
     }
   } catch (e) {}
 
-  // 2. Try WebGL debug renderer info (standard)
-  if (!renderer || renderer === "Unknown") {
+  // 2. Try WebGL2 then WebGL with high-performance preference
+  if (!renderer || renderer === "Unknown" || renderer.includes("Basic Render Driver")) {
     try {
       const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const glOpts = { powerPreference: "high-performance", failIfMajorPerformanceCaveat: false };
+      const gl = canvas.getContext("webgl2", glOpts) || canvas.getContext("webgl", glOpts) || canvas.getContext("experimental-webgl", glOpts);
       if (gl) {
         const dbg = gl.getExtension("WEBGL_debug_renderer_info");
         if (dbg) {
-          renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "";
-          vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || "";
+          const glRenderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "";
+          const glVendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || "";
+          if (glRenderer && (!renderer || renderer.includes("Basic Render Driver") || !glRenderer.includes("Basic Render Driver"))) {
+            renderer = glRenderer;
+            vendor = glVendor;
+          }
         }
       }
     } catch (e) {}
@@ -64,12 +70,17 @@ export async function getGpuInfo() {
   const match = renderer.match(/(NVIDIA\s+GeForce\s+[^,()]+|AMD\s+Radeon\s+[^,()]+|Intel\s+Arc\s+[^,()]+|Intel\s+Core\s+[^,()]+|Apple\s+M\d+[^,()]*)/i);
   if (match) {
     cleanName = match[1].trim();
+  } else if (renderer.includes("Basic Render Driver")) {
+    cleanName = "Microsoft Basic Render Driver (ソフトウェア描画)";
   }
+
+  const isSoftware = /Basic Render Driver|SwiftShader|llvmpipe|Software/i.test(renderer);
 
   return {
     raw: renderer,
     cleanName: cleanName || renderer || "Generic GPU",
     vendor,
+    isSoftware,
   };
 }
 
@@ -112,7 +123,7 @@ export async function checkAv1EncoderSupport() {
         };
         const support = await VideoEncoder.isConfigSupported(testConfig);
         if (support && support.supported) {
-          const isHw = support.config?.hardwareAcceleration !== "prefer-software";
+          const isHw = support.config?.hardwareAcceleration !== "prefer-software" && !gpuInfo.isSoftware;
           return {
             supported: true,
             isHardware: isHw,

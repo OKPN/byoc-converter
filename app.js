@@ -562,7 +562,7 @@ async function initAv1VideoSupport() {
     // 2. PC環境ではグループを常に表示
     if (videoSettingsGroup) videoSettingsGroup.style.display = "block";
 
-    if (support && support.supported) {
+    if (support && support.supported && !support.gpuInfo?.isSoftware) {
       const gpuName = support.gpuInfo?.cleanName || "GPU加速";
       if (badge) {
         badge.textContent = `⚡ ${gpuName}`;
@@ -575,15 +575,20 @@ async function initAv1VideoSupport() {
       if (enableVideoAv1Check) enableVideoAv1Check.disabled = false;
     } else {
       const gpuName = support?.gpuInfo?.cleanName || "不明";
+      const isSw = support?.gpuInfo?.isSoftware;
       if (badge) {
-        badge.textContent = `⚠️ AV1非対応 (${gpuName})`;
+        badge.textContent = isSw ? `⚠️ ソフトウェア描画中 (${gpuName})` : `⚠️ AV1非対応 (${gpuName})`;
         badge.style.color = "#fbbf24";
         badge.style.borderColor = "rgba(251, 191, 36, 0.4)";
         badge.style.background = "rgba(251, 191, 36, 0.12)";
       }
       if (helpText) {
         helpText.style.display = "block";
-        helpText.textContent = `ℹ️ ${support?.reason || "AV1エンコード未対応"} (GPU: ${gpuName})`;
+        if (isSw) {
+          helpText.innerHTML = `⚠️ <strong>物理 GPU（RTX 5070 Ti 等）がブラウザに認識されていません</strong><br><span style="font-size: 10.5px; color: var(--text-secondary); display: inline-block; margin-top: 2px;">※ 現在『Microsoft Basic Render Driver』で動作しています。ブラウザの設定で『ハードウェア アクセラレータを使用する』がONになっているかご確認ください。</span>`;
+        } else {
+          helpText.textContent = `ℹ️ ${support?.reason || "AV1エンコード未対応"} (GPU: ${gpuName})`;
+        }
       }
       if (enableVideoAv1Check) {
         enableVideoAv1Check.checked = false;
