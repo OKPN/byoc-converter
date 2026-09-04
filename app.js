@@ -83,8 +83,13 @@ const i18nDict = {
     btnCopyCurl: "💻 curl例をコピー",
     templateLabel: "定型文:",
     paletteNote: "クリックしてURLを本文（カーソル位置）に挿入:",
-    civitaiGalleryHeading: "🎨 Civitai ギャラリー (投稿作品一覧)",
-    civitaiUsernameLabel: "👤 ユーザー名:",
+    civitaiGalleryHeading: "🎨 Civitai ギャラリー & クリエイターウォッチ",
+    civitaiUsernameLabel: "👤 クリエイター:",
+    civitaiAddCreator: "➕ ウォッチするクリエイターを追加:",
+    civitaiMarkRead: "✓ 既読にする",
+    civitaiNewBadge: "{count}件の新着",
+    civitaiDeleteConfirm: "登録クリエイター「{name}」をウォッチリストから削除しますか？",
+    civitaiLastOneError: "最低1件のクリエイター登録が必要です。",
     limitLabel: "上限:",
     outputFiles: "出力ファイル",
     statusWaiting: "待機中",
@@ -230,8 +235,13 @@ const i18nDict = {
     btnCopyCurl: "💻 Copy curl Command",
     templateLabel: "Template:",
     paletteNote: "Click to insert media URL at cursor position:",
-    civitaiGalleryHeading: "🎨 Civitai Gallery (Your Public Posts)",
-    civitaiUsernameLabel: "👤 Username:",
+    civitaiGalleryHeading: "🎨 Civitai Gallery & Watcher",
+    civitaiUsernameLabel: "👤 Creator:",
+    civitaiAddCreator: "➕ Add Creator to Watch:",
+    civitaiMarkRead: "✓ Mark as Read",
+    civitaiNewBadge: "{count} New",
+    civitaiDeleteConfirm: "Remove creator \"{name}\" from your watch list?",
+    civitaiLastOneError: "At least one creator must be kept.",
     limitLabel: "Limit:",
     nonConverted: "Unconverted",
     rateReduced: "{rate}% reduced",
@@ -307,7 +317,16 @@ const cfDomainAddForm = document.querySelector("#cfDomainAddForm");
 const cfDomainNewInput = document.querySelector("#cfDomainNewInput");
 const cfDomainNewSaveBtn = document.querySelector("#cfDomainNewSaveBtn");
 const cfDomainNewCancelBtn = document.querySelector("#cfDomainNewCancelBtn");
-const civitaiUsername = document.querySelector("#civitaiUsername");
+const civitaiUserSelect = document.querySelector("#civitaiUserSelect");
+const civitaiUserAddBtn = document.querySelector("#civitaiUserAddBtn");
+const civitaiUserDeleteBtn = document.querySelector("#civitaiUserDeleteBtn");
+const civitaiUserAddForm = document.querySelector("#civitaiUserAddForm");
+const civitaiUserNewInput = document.querySelector("#civitaiUserNewInput");
+const civitaiUserNewSaveBtn = document.querySelector("#civitaiUserNewSaveBtn");
+const civitaiUserNewCancelBtn = document.querySelector("#civitaiUserNewCancelBtn");
+const civitaiNewBadge = document.querySelector("#civitaiNewBadge");
+const civitaiMarkReadBtn = document.querySelector("#civitaiMarkReadBtn");
+const civitaiUsername = civitaiUserSelect; // 後方互換
 const cfStatus = document.querySelector("#cfStatus");
 const cfSettingsAccordion = document.querySelector("#cfSettingsAccordion");
 const cfSaveButton = document.querySelector("#cfSaveButton");
@@ -544,12 +563,116 @@ function updateCfStatus() {
   return isConfigured;
 }
 
+// --- 🎨 Civitai クリエイター・ギャラリー管理 ---
+
+function getCivitaiUserList() {
+  let list = [];
+  try {
+    list = JSON.parse(localStorage.getItem("civitaiUserList") || "[]");
+  } catch (e) {
+    list = [];
+  }
+  const legacy = (localStorage.getItem("civitaiUsername") || "").trim();
+  if (legacy && !list.includes(legacy)) {
+    list.unshift(legacy);
+    localStorage.setItem("civitaiUserList", JSON.stringify(list));
+  }
+  if (list.length === 0) {
+    list.push("OKPN");
+    localStorage.setItem("civitaiUserList", JSON.stringify(list));
+  }
+  return list;
+}
+
+function saveCivitaiUserList(list) {
+  localStorage.setItem("civitaiUserList", JSON.stringify(list));
+}
+
+function getCurrentCivitaiUser() {
+  const list = getCivitaiUserList();
+  const saved = (localStorage.getItem("civitaiUsername") || "").trim();
+  if (saved && list.includes(saved)) {
+    return saved;
+  }
+  const fallback = list[0] || "OKPN";
+  localStorage.setItem("civitaiUsername", fallback);
+  return fallback;
+}
+
+function getCivitaiLastSeenMap() {
+  try {
+    return JSON.parse(localStorage.getItem("civitaiLastSeenMap") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveCivitaiLastSeenMap(map) {
+  localStorage.setItem("civitaiLastSeenMap", JSON.stringify(map));
+}
+
 function updateCivitaiStatus() {
-  const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
+  const username = getCurrentCivitaiUser();
   if (civitaiProfileLink) {
     civitaiProfileLink.href = username ? `https://civitai.com/user/${encodeURIComponent(username)}/images` : "https://civitai.com";
   }
   return username !== "";
+}
+
+function renderCivitaiUserSelect(unreadUsers = new Set()) {
+  if (!civitaiUserSelect) return;
+  const list = getCivitaiUserList();
+  const currentUser = getCurrentCivitaiUser();
+
+  civitaiUserSelect.innerHTML = list.map(u => {
+    const isUnread = unreadUsers.has(u);
+    const prefix = isUnread ? "🔴 👤 " : "👤 ";
+    const suffix = isUnread ? " (新着)" : "";
+    const selected = (u === currentUser) ? " selected" : "";
+    return `<option value="${escapeHtml(u)}" style="background-color: #1a1c23; color: #f8fafc;"${selected}>${prefix}${escapeHtml(u)}${suffix}</option>`;
+  }).join("");
+
+  if (civitaiUserDeleteBtn) {
+    civitaiUserDeleteBtn.disabled = list.length <= 1;
+    civitaiUserDeleteBtn.style.opacity = list.length <= 1 ? "0.35" : "1";
+    civitaiUserDeleteBtn.style.cursor = list.length <= 1 ? "not-allowed" : "pointer";
+  }
+
+  updateCivitaiStatus();
+}
+
+let isCheckingCivitaiUnread = false;
+async function checkAllCivitaiCreatorsUnread() {
+  if (isCheckingCivitaiUnread) return;
+  isCheckingCivitaiUnread = true;
+  try {
+    const list = getCivitaiUserList();
+    const lastSeenMap = getCivitaiLastSeenMap();
+    const unreadSet = new Set();
+    const currentUser = getCurrentCivitaiUser();
+
+    await Promise.all(list.map(async (user) => {
+      const lastSeenId = Number(lastSeenMap[user] || 0);
+      if (!lastSeenId) return; // 初回は未読マークをつけない
+      try {
+        const res = await fetch(`https://civitai.com/api/v1/images?username=${encodeURIComponent(user)}&limit=1&sort=Newest&browsingLevel=127&nsfw=true&_t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const latestItem = data.items && data.items[0];
+        if (latestItem && Number(latestItem.id) > lastSeenId) {
+          unreadSet.add(user);
+        }
+      } catch (e) {
+        // network skip
+      }
+    }));
+
+    renderCivitaiUserSelect(unreadSet);
+  } catch (err) {
+    console.debug("Civitai unread check skipped:", err);
+  } finally {
+    isCheckingCivitaiUnread = false;
+  }
 }
 
 async function checkCivitaiItemWf(item) {
@@ -582,7 +705,7 @@ async function checkCivitaiItemWf(item) {
 }
 
 async function fetchAndRenderCivitaiGallery() {
-  const username = (localStorage.getItem("civitaiUsername") || civitaiUsername?.value || "").trim();
+  const username = getCurrentCivitaiUser();
   if (!civitaiGalleryList) return;
 
   const lang = getAppLanguage();
@@ -602,6 +725,44 @@ async function fetchAndRenderCivitaiGallery() {
     }
     const data = await res.json();
     const items = data.items || [];
+
+    // 新着判定
+    const lastSeenMap = getCivitaiLastSeenMap();
+    const lastSeenId = Number(lastSeenMap[username] || 0);
+    const newestId = items.length > 0 ? Number(items[0].id) : 0;
+
+    let newItemsCount = 0;
+    if (lastSeenId === 0) {
+      // 初回訪問時は最新IDを登録して全件新着扱いを防止
+      if (newestId > 0) {
+        lastSeenMap[username] = newestId;
+        saveCivitaiLastSeenMap(lastSeenMap);
+      }
+    } else if (newestId > lastSeenId) {
+      newItemsCount = items.filter(it => Number(it.id) > lastSeenId).length;
+    }
+
+    // 新着バッジおよび既読ボタンの制御
+    if (newItemsCount > 0) {
+      if (civitaiNewBadge) {
+        civitaiNewBadge.textContent = `🔴 ${(dict.civitaiNewBadge || "{count}件の新着").replace("{count}", newItemsCount)}`;
+        civitaiNewBadge.style.display = "inline-flex";
+      }
+      if (civitaiMarkReadBtn) {
+        civitaiMarkReadBtn.style.display = "inline-flex";
+        civitaiMarkReadBtn.onclick = () => {
+          lastSeenMap[username] = newestId;
+          saveCivitaiLastSeenMap(lastSeenMap);
+          if (civitaiNewBadge) civitaiNewBadge.style.display = "none";
+          if (civitaiMarkReadBtn) civitaiMarkReadBtn.style.display = "none";
+          document.querySelectorAll(".civitai-new-item-badge").forEach(el => el.remove());
+          checkAllCivitaiCreatorsUnread();
+        };
+      }
+    } else {
+      if (civitaiNewBadge) civitaiNewBadge.style.display = "none";
+      if (civitaiMarkReadBtn) civitaiMarkReadBtn.style.display = "none";
+    }
 
     civitaiPaletteFiles = items.map(item => {
       const isVideo = item.type === "video";
@@ -624,6 +785,7 @@ async function fetchAndRenderCivitaiGallery() {
     }
 
     items.forEach(item => {
+      const isNewItem = (lastSeenId > 0 && Number(item.id) > lastSeenId);
       const article = document.createElement("article");
       article.className = "result-item";
 
@@ -649,6 +811,7 @@ async function fetchAndRenderCivitaiGallery() {
         <div class="item-info-container" style="flex: 1; min-width: 0;">
           <div class="item-name-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="item-name" style="font-weight: 600; font-size: 12px; font-family: monospace;">ID: ${escapeHtml(String(item.id))}</span>
+            ${isNewItem ? `<span class="civitai-new-item-badge" style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: bold;">✨ NEW</span>` : ""}
             <span class="format-badge" style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${isVideo ? "🎬 VIDEO" : "🖼️ IMAGE"}</span>
             <span class="civitai-wf-badge-placeholder" data-id="${item.id}"></span>
             ${item.nsfwLevel && item.nsfwLevel !== "None" ? `<span style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(244, 63, 94, 0.15); color: #f43f5e; font-weight: bold;">${escapeHtml(item.nsfwLevel)}</span>` : ""}
@@ -676,6 +839,10 @@ async function fetchAndRenderCivitaiGallery() {
         }
       });
     });
+
+    // バックグラウンドで他クリエイターの新着チェックを実施
+    checkAllCivitaiCreatorsUnread();
+
   } catch (err) {
     console.error("Civitai gallery fetch error:", err);
     civitaiGalleryList.innerHTML = `<span class="item-meta error" style="padding: 18px; color: var(--danger);">Civitai ギャラリーの取得に失敗しました: ${escapeHtml(err.message)}</span>`;
@@ -699,6 +866,7 @@ function loadSettings() {
   if (civitaiUsername) civitaiUsername.value = savedCivitaiUser;
 
   renderCfDomainSelect();
+  renderCivitaiUserSelect();
   updateCfStatus();
   updateCivitaiStatus();
 
@@ -1064,21 +1232,80 @@ cfDomainDeleteBtn?.addEventListener("click", () => {
   updateCfStatus();
 });
 
-// 🎨 Civitai ユーザー名の独立イベントリスナー (インライン入力時に自動保存 & ギャラリー更新)
-let civitaiFetchTimer = null;
-civitaiUsername?.addEventListener("input", () => {
-  const cUser = civitaiUsername?.value?.trim() || "";
-  if (cUser) {
-    localStorage.setItem("civitaiUsername", cUser);
-  } else {
-    localStorage.removeItem("civitaiUsername");
-  }
-  updateCivitaiStatus();
-
-  if (civitaiFetchTimer) clearTimeout(civitaiFetchTimer);
-  civitaiFetchTimer = setTimeout(() => {
+// 🎨 Civitai クリエイター選択・追加・削除・更新イベントリスナー
+civitaiUserSelect?.addEventListener("change", () => {
+  const selected = civitaiUserSelect.value.trim();
+  if (selected) {
+    localStorage.setItem("civitaiUsername", selected);
+    updateCivitaiStatus();
     fetchAndRenderCivitaiGallery();
-  }, 400);
+  }
+});
+
+civitaiUserAddBtn?.addEventListener("click", () => {
+  if (!civitaiUserAddForm) return;
+  const isOpen = civitaiUserAddForm.style.display === "flex";
+  civitaiUserAddForm.style.display = isOpen ? "none" : "flex";
+  if (!isOpen && civitaiUserNewInput) {
+    civitaiUserNewInput.value = "";
+    civitaiUserNewInput.focus();
+  }
+});
+
+civitaiUserNewCancelBtn?.addEventListener("click", () => {
+  if (civitaiUserAddForm) civitaiUserAddForm.style.display = "none";
+});
+
+civitaiUserNewSaveBtn?.addEventListener("click", () => {
+  const val = civitaiUserNewInput?.value?.trim() || "";
+  if (!val) return;
+
+  const list = getCivitaiUserList();
+  const exists = list.some(u => u.toLowerCase() === val.toLowerCase());
+  if (!exists) {
+    list.push(val);
+    saveCivitaiUserList(list);
+  }
+
+  localStorage.setItem("civitaiUsername", val);
+  if (civitaiUserAddForm) civitaiUserAddForm.style.display = "none";
+  renderCivitaiUserSelect();
+  fetchAndRenderCivitaiGallery();
+});
+
+civitaiUserNewInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    civitaiUserNewSaveBtn?.click();
+  } else if (e.key === "Escape") {
+    civitaiUserNewCancelBtn?.click();
+  }
+});
+
+civitaiUserDeleteBtn?.addEventListener("click", () => {
+  const list = getCivitaiUserList();
+  const current = getCurrentCivitaiUser();
+  const lang = getAppLanguage();
+  const dict = i18nDict[lang] || i18nDict.ja;
+
+  if (list.length <= 1) {
+    alert(dict.civitaiLastOneError || "最低1件のクリエイター登録が必要です。");
+    return;
+  }
+
+  const confirmMsg = (dict.civitaiDeleteConfirm || "登録クリエイター「{name}」をウォッチリストから削除しますか？").replace("{name}", current);
+  if (!confirm(confirmMsg)) return;
+
+  const newList = list.filter(u => u !== current);
+  saveCivitaiUserList(newList);
+
+  const lastSeenMap = getCivitaiLastSeenMap();
+  delete lastSeenMap[current];
+  saveCivitaiLastSeenMap(lastSeenMap);
+
+  localStorage.setItem("civitaiUsername", newList[0] || "");
+  renderCivitaiUserSelect();
+  fetchAndRenderCivitaiGallery();
 });
 
 cfSaveButton?.addEventListener("click", () => {
