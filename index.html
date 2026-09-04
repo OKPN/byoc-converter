@@ -239,21 +239,6 @@
                 </div>
               </details>
 
-              <!-- 📦 設定の引き継ぎ & バックアップ (独立アコーディオン) -->
-              <details class="settings-accordion cf-settings-accordion" id="dataSyncAccordion" style="margin-top: 6px;" open>
-                <summary data-i18n="dataSyncHeading">📦 設定の引き継ぎ & スマホ共有</summary>
-                <div class="settings-content" style="padding: 10px 0 4px; display: flex; flex-direction: column; gap: 8px;">
-                  <span style="font-size: 11px; color: var(--muted); line-height: 1.4;" data-i18n="dataSyncDesc">
-                    Civitai ウォッチリスト、配信ドメイン、Cloudflare 接続情報、画像変換設定を別の端末やスマホへ安全に引き継ぎます。
-                  </span>
-                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="primary-button" id="cfShareQrButton" type="button" style="flex: 1.2; min-height: 36px; font-size: 12px; margin: 0; background: #0284c7; border-color: #38bdf8;" title="スマホのカメラでスキャンして全設定を引き継ぐ" data-i18n="btnShareQr">📱 スマホ共有 (QR)</button>
-                    <button class="ghost-button" id="cfBackupUrlButton" type="button" style="flex: 1.2; min-height: 36px; font-size: 11px; margin: 0;" title="PINコードで暗号化したバックアップURLを生成" data-i18n="btnPinBackup">🔗 PINバックアップ</button>
-                    <button class="ghost-button danger-button" id="globalClearButton" type="button" style="min-height: 36px; font-size: 11px; padding: 0 10px;" title="アプリに保存された全設定をクリア" data-i18n="btnClearAllData">🗑️ 全クリア</button>
-                  </div>
-                </div>
-              </details>
-
               <!-- 📡 投稿用 API アコーディオン -->
               <details class="settings-accordion cf-settings-accordion" id="dedicatedUploadAccordion" style="margin-top: 6px;">
                 <summary data-i18n="uploadApiTitle">📡 投稿用 API (外部スクリプト連携)</summary>
@@ -272,6 +257,21 @@
                   <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                     <button class="ghost-button" id="copyUploadApiUrlBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;" data-i18n="btnCopyUrl">📋 URLをコピー</button>
                     <button class="ghost-button" id="copyCurlCmdBtn" type="button" style="font-size: 11px; padding: 4px 8px; min-height: 30px;" data-i18n="btnCopyCurl">💻 curl例をコピー</button>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 📦 設定の引き継ぎ & バックアップ (独立アコーディオン) -->
+              <details class="settings-accordion cf-settings-accordion" id="dataSyncAccordion" style="margin-top: 6px;">
+                <summary data-i18n="dataSyncHeading">📦 設定の引き継ぎ & スマホ共有</summary>
+                <div class="settings-content" style="padding: 10px 0 4px; display: flex; flex-direction: column; gap: 8px;">
+                  <span style="font-size: 11px; color: var(--muted); line-height: 1.4;" data-i18n="dataSyncDesc">
+                    Civitai ウォッチリスト、配信ドメイン、Cloudflare 接続情報、画像変換設定を別の端末やスマホへ安全に引き継ぎます。
+                  </span>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="primary-button" id="cfShareQrButton" type="button" style="flex: 1.2; min-height: 36px; font-size: 12px; margin: 0; background: #0284c7; border-color: #38bdf8;" title="スマホのカメラでスキャンして全設定を引き継ぐ" data-i18n="btnShareQr">📱 スマホ共有 (QR)</button>
+                    <button class="ghost-button" id="cfBackupUrlButton" type="button" style="flex: 1.2; min-height: 36px; font-size: 11px; margin: 0;" title="PINコードで暗号化したバックアップURLを生成" data-i18n="btnPinBackup">🔗 PINバックアップ</button>
+                    <button class="ghost-button danger-button" id="globalClearButton" type="button" style="min-height: 36px; font-size: 11px; padding: 0 10px;" title="アプリに保存された全設定をクリア" data-i18n="btnClearAllData">🗑️ 全クリア</button>
                   </div>
                 </div>
               </details>
