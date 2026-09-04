@@ -549,15 +549,22 @@ async function updateVideoEstSize() {
 async function initAv1VideoSupport() {
   try {
     const support = await checkAv1EncoderSupport();
-    if (support && support.supported && videoSettingsGroup) {
+    if (support && support.supported && support.isHardware && videoSettingsGroup) {
       videoSettingsGroup.style.display = "block";
       const titleSpan = videoSettingsGroup.querySelector(".section-label-text");
       if (titleSpan) {
-        titleSpan.innerHTML = `🎥 動画を AV1 で軽量化 (${support.isHardware ? "GPU加速" : "CPU"})`;
+        const gpuName = support.gpuInfo?.cleanName || "GPU加速";
+        titleSpan.innerHTML = `🎥 動画を AV1 で軽量化 <span style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-left: 6px; padding: 1px 6px; background: rgba(56, 189, 248, 0.12); border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3);">⚡ ${escapeHtml(gpuName)}</span>`;
+      }
+    } else {
+      if (videoSettingsGroup) videoSettingsGroup.style.display = "none";
+      if (!support?.isMobile) {
+        console.info(`[BYOC] AV1 GPU Video Encoder disabled: ${support?.reason || "Unsupported"} (GPU: ${support?.gpuInfo?.cleanName || "Unknown"})`);
       }
     }
   } catch (e) {
     console.debug("AV1 support check failed:", e);
+    if (videoSettingsGroup) videoSettingsGroup.style.display = "none";
   }
 }
 

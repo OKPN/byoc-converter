@@ -6,14 +6,90 @@ import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from "mp
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from "webm-muxer";
 
 /**
- * Check if the browser and GPU support AV1 encoding via WebCodecs
+ * Detect if the device is a mobile or tablet device
  */
-export async function checkAv1EncoderSupport() {
-  if (typeof window === "undefined" || !("VideoEncoder" in window)) {
-    return { supported: false, isHardware: false, reason: "WebCodecs API not available" };
+export function isMobileDevice() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return true;
+  // 1. User-Agent Client Hints
+  if (navigator.userAgentData?.mobile) return true;
+  // 2. UA string regex
+  const ua = navigator.userAgent || "";
+  if (/Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(ua)) return true;
+  // 3. iPadOS 13+ desktop-mode Safari
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  // 4. Touch points & screen size heuristic
+  if (window.matchMedia && window.matchMedia("(pointer: coarse) and (max-width: 1024px)").matches) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get GPU hardware renderer string via WebGL debug extension or WebGPU
+ */
+export async function getGpuInfo() {
+  if (typeof window === "undefined") return { raw: "Unknown", cleanName: "Unknown", vendor: "Unknown" };
+
+  let renderer = "";
+  let vendor = "";
+
+  // 1. Try WebGPU if available
+  try {
+    if ("gpu" in navigator) {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter && adapter.info) {
+        vendor = adapter.info.vendor || "";
+        renderer = `${adapter.info.vendor || ""} ${adapter.info.architecture || ""} ${adapter.info.device || ""}`.trim();
+      }
+    }
+  } catch (e) {}
+
+  // 2. Try WebGL debug renderer info (standard)
+  if (!renderer || renderer === "Unknown") {
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      if (gl) {
+        const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+        if (dbg) {
+          renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "";
+          vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || "";
+        }
+      }
+    } catch (e) {}
   }
 
-  // Check hardware acceleration preference
+  // Format clean GPU name (e.g. remove ANGLE, D3D11 wrappers)
+  let cleanName = renderer;
+  const match = renderer.match(/(NVIDIA\s+GeForce\s+[^,()]+|AMD\s+Radeon\s+[^,()]+|Intel\s+Arc\s+[^,()]+|Intel\s+Core\s+[^,()]+|Apple\s+M\d+[^,()]*)/i);
+  if (match) {
+    cleanName = match[1].trim();
+  }
+
+  return {
+    raw: renderer,
+    cleanName: cleanName || renderer || "Generic GPU",
+    vendor,
+  };
+}
+
+/**
+ * Check if the browser and GPU strictly support hardware AV1 encoding via WebCodecs
+ */
+export async function checkAv1EncoderSupport() {
+  // 1. Mobile devices are strictly excluded
+  if (isMobileDevice()) {
+    return { supported: false, isHardware: false, isMobile: true, reason: "Mobile device excluded" };
+  }
+
+  const gpuInfo = await getGpuInfo();
+
+  if (typeof window === "undefined" || !("VideoEncoder" in window)) {
+    return { supported: false, isHardware: false, gpuInfo, reason: "WebCodecs VideoEncoder not available" };
+  }
+
+  // 2. Strictly check PHYSICAL GPU hardware acceleration (require-hardware)
+  // Rejects software codecs, old Radeons (RX 6000 and earlier), old GeForces (RTX 30 and earlier), etc.
   const testConfigs = [
     {
       codec: "av01.0.04M.08", // AV1 Main Profile, Level 2.0, 8-bit
@@ -21,7 +97,7 @@ export async function checkAv1EncoderSupport() {
       height: 720,
       bitrate: 2_500_000,
       framerate: 30,
-      hardwareAcceleration: "prefer-hardware",
+      hardwareAcceleration: "require-hardware",
     },
     {
       codec: "av01.0.05M.08",
@@ -29,15 +105,7 @@ export async function checkAv1EncoderSupport() {
       height: 720,
       bitrate: 2_500_000,
       framerate: 30,
-      hardwareAcceleration: "prefer-hardware",
-    },
-    {
-      codec: "av01.0.04M.08",
-      width: 1280,
-      height: 720,
-      bitrate: 2_500_000,
-      framerate: 30,
-      hardwareAcceleration: "no-preference",
+      hardwareAcceleration: "require-hardware",
     }
   ];
 
@@ -45,21 +113,25 @@ export async function checkAv1EncoderSupport() {
     try {
       const support = await VideoEncoder.isConfigSupported(config);
       if (support && support.supported) {
-        const isHw = support.config?.hardwareAcceleration === "prefer-hardware" ||
-                     support.config?.hardwareAcceleration === "require-hardware";
         return {
           supported: true,
-          isHardware: isHw,
+          isHardware: true,
+          gpuInfo,
           codec: config.codec,
           config: support.config,
         };
       }
     } catch (e) {
-      // Continue checking next config
+      // Hardware encoder not available or config rejected
     }
   }
 
-  return { supported: false, isHardware: false, reason: "AV1 encoding not supported on this browser/GPU" };
+  return {
+    supported: false,
+    isHardware: false,
+    gpuInfo,
+    reason: "No physical AV1 hardware encoder (NVENC 8th / VCN 4.0 / QSV AV1) detected",
+  };
 }
 
 /**
@@ -287,7 +359,7 @@ export async function encodeVideoToAv1({
     framerate: fps,
     bitrateMode: "variable", // VBR
     latencyMode: "quality",
-    hardwareAcceleration: "prefer-hardware",
+    hardwareAcceleration: "require-hardware",
   };
 
   videoEncoder.configure(encoderConfig);
