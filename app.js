@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import encodeJxl, { init as initJxl } from "@jsquash/jxl/encode.js";
 import jxlWasmUrl from "@jsquash/jxl/codec/enc/jxl_enc.wasm?url";
+import { checkAv1EncoderSupport, encodeVideoToAv1 } from "./videoEncoder.js";
 
 let jxlInitialized = false;
 async function ensureJxl() {
@@ -139,6 +140,11 @@ const i18nDict = {
     civitaiTosLink: "Civitai 利用規約 (Terms of Service) ↗",
     civitaiModalDoNotShow: "以後この確認を表示しない",
     civitaiModalConfirm: "🎨 投稿する",
+    enableVideoAv1: "🎥 動画を AV1 で軽量化 (GPU)",
+    videoContainer: "コンテナ形式",
+    videoBitrate: "ビットレート",
+    videoPreserveAudio: "🔊 音声トラックを保持する (AAC)",
+    videoEstSize: "予想サイズ:",
   },
   en: {
     siteTitle: "BYOC Converter",
@@ -304,6 +310,11 @@ const i18nDict = {
     civitaiTosLink: "Civitai Terms of Service (ToS) ↗",
     civitaiModalDoNotShow: "Do not show this confirmation again",
     civitaiModalConfirm: "🎨 Post to Civitai",
+    enableVideoAv1: "🎥 GPU AV1 Video Compression",
+    videoContainer: "Container Format",
+    videoBitrate: "Bitrate",
+    videoPreserveAudio: "🔊 Preserve Audio Track (AAC)",
+    videoEstSize: "Est. Size:",
   }
 };
 
@@ -470,6 +481,85 @@ const formatSelect = document.querySelector("#formatSelect");
 const renamePattern = document.querySelector("#renamePattern");
 const clearRenamePattern = document.querySelector("#clearRenamePattern");
 const tempTtlSelect = document.querySelector("#tempTtlSelect");
+
+// 🎥 動画 AV1 エンコード設定要素
+const videoSettingsGroup = document.querySelector("#videoSettingsGroup");
+const enableVideoAv1Check = document.querySelector("#enableVideoAv1Check");
+const videoSettingsArea = document.querySelector("#videoSettingsArea");
+const videoBitrateRange = document.querySelector("#videoBitrateRange");
+const videoBitrateOutput = document.querySelector("#videoBitrateOutput");
+const videoPreserveAudioCheck = document.querySelector("#videoPreserveAudioCheck");
+const videoEstSizeChip = document.querySelector("#videoEstSizeChip");
+const videoEstSizeText = document.querySelector("#videoEstSizeText");
+const videoPresetBtns = document.querySelectorAll(".video-preset-btn");
+
+const videoDurationCache = new WeakMap();
+
+async function getVideoDuration(file) {
+  if (videoDurationCache.has(file)) return videoDurationCache.get(file);
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      videoDurationCache.set(file, video.duration || 0);
+      resolve(video.duration || 0);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(0);
+    };
+  });
+}
+
+async function updateVideoEstSize() {
+  if (!videoEstSizeChip || !videoEstSizeText) return;
+  const videoFiles = state.files.filter(f => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    return (f.type && f.type.startsWith("video/")) || ["mp4", "webm", "mov", "m4v", "ogv"].includes(ext);
+  });
+
+  if (videoFiles.length === 0 || !enableVideoAv1Check?.checked) {
+    videoEstSizeChip.style.display = "none";
+    return;
+  }
+
+  const bitrateMbps = parseFloat(videoBitrateRange?.value || "3.0");
+  const preserveAudio = videoPreserveAudioCheck?.checked ?? true;
+  const audioBitrateBps = preserveAudio ? 128000 : 0;
+  const videoBitrateBps = bitrateMbps * 1000 * 1000;
+  const totalBitrateBps = videoBitrateBps + audioBitrateBps;
+
+  let totalDuration = 0;
+  for (const f of videoFiles) {
+    totalDuration += await getVideoDuration(f);
+  }
+
+  if (totalDuration > 0) {
+    const estBytes = (totalDuration * totalBitrateBps) / 8;
+    videoEstSizeChip.style.display = "inline-flex";
+    videoEstSizeText.textContent = `約 ${formatBytes(estBytes)}`;
+  } else {
+    videoEstSizeChip.style.display = "none";
+  }
+}
+
+async function initAv1VideoSupport() {
+  try {
+    const support = await checkAv1EncoderSupport();
+    if (support && support.supported && videoSettingsGroup) {
+      videoSettingsGroup.style.display = "block";
+      const titleSpan = videoSettingsGroup.querySelector(".section-label-text");
+      if (titleSpan) {
+        titleSpan.innerHTML = `🎥 動画を AV1 で軽量化 (${support.isHardware ? "GPU加速" : "CPU"})`;
+      }
+    }
+  } catch (e) {
+    console.debug("AV1 support check failed:", e);
+  }
+}
 
 // KVキャッシュ一覧 & 容量メーター
 const r2FileList = document.querySelector("#r2FileList");
@@ -1729,6 +1819,7 @@ clearButton?.addEventListener("click", () => {
   state.results = [];
   invalidateConversionCache();
   render();
+  updateVideoEstSize();
 });
 
 // --- ComfyUI ワークフロー / 生成メタデータ検出ユーティリティ ---
@@ -1944,6 +2035,7 @@ function addFiles(files) {
     }
     render();
   });
+  updateVideoEstSize();
 }
 
 function setUiLock(locked) {
@@ -1969,14 +2061,19 @@ function updateRenamePreview() {
   const isFirstImage = firstFile
     ? (firstFile.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(firstExt.toLowerCase()))
     : true;
+  const isVideoExt = ["mp4", "webm", "mov", "m4v", "ogv"].includes(firstExt.toLowerCase());
+  const isFirstVideo = firstFile ? ((firstFile.type && firstFile.type.startsWith("video/")) || isVideoExt) : false;
+  const isVideoAv1On = isFirstVideo && (enableVideoAv1Check?.checked ?? false);
 
   const isRenameOn = enableRenameCheck?.checked ?? true;
   const isConvertOn = enableConvertCheck?.checked ?? true;
 
-  // 画像以外（MP3等）なら変換設定に関わらず元拡張子を維持
-  const ext = (isConvertOn && isFirstImage)
-    ? (extensions[formatSelect?.value || "image/webp"] || "webp")
-    : (firstExt || "ext");
+  let ext = firstExt || "ext";
+  if (isFirstVideo && isVideoAv1On) {
+    ext = document.querySelector('input[name="videoContainer"]:checked')?.value || "mp4";
+  } else if (isConvertOn && isFirstImage) {
+    ext = extensions[formatSelect?.value || "image/webp"] || "webp";
+  }
 
   const dummyName = firstFile ? firstFile.name.replace(/\.[^.]+$/, "") : "sample";
 
@@ -2038,13 +2135,13 @@ function render() {
       const ext = currentName.split('.').pop().toLowerCase();
       const isVideo = (file.type && file.type.startsWith("video/")) || ["mp4", "webm", "ogv", "mov", "m4v"].includes(ext);
 
-      if (result && result.previewUrl) {
+      if (isVideo) {
+        const videoSrc = result ? (result.proxyUrl || result.url) : URL.createObjectURL(file);
+        thumbHtml = `<video class="thumb" src="${videoSrc}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
+      } else if (result && result.previewUrl) {
         thumbHtml = `<img class="thumb" alt="" src="${result.previewUrl}">`;
       } else if (file.type.startsWith("image/")) {
         thumbHtml = `<img class="thumb" alt="" src="${URL.createObjectURL(file)}">`;
-      } else if (isVideo) {
-        const videoSrc = result && result.proxyUrl ? result.proxyUrl : URL.createObjectURL(file);
-        thumbHtml = `<video class="thumb" src="${videoSrc}#t=0.5" preload="metadata" muted playsinline style="object-fit: cover; pointer-events: none;"></video>`;
       } else {
         thumbHtml = `<div class="thumb format-badge">${escapeHtml(ext.toUpperCase())}</div>`;
       }
@@ -2052,7 +2149,9 @@ function render() {
       let metaHtml = "";
       let warnNotice = "";
 
-      if (result) {
+      if (result && result.isEncodingVideo) {
+        metaHtml = `<span style="color: #38bdf8; font-weight: bold;">🎥 AV1エンコード中: ${result.videoProgress || 0}%</span> <span style="font-size: 10px; color: var(--muted);">(${escapeHtml(result.videoProgressMsg || "")})</span>`;
+      } else if (result) {
         const saved = result.originalSize - result.size;
         const savedRate = result.originalSize ? Math.round((saved / result.originalSize) * 100) : 0;
 
@@ -2193,6 +2292,7 @@ fileList?.addEventListener("click", async (event) => {
       state.results.splice(index, 1);
       invalidateConversionCache();
       render();
+      updateVideoEstSize();
     }
     return;
   }
@@ -2336,9 +2436,13 @@ function getCurrentConfigSignature() {
   const quality = qualityRange ? qualityRange.value : "85";
   const isRenameOn = enableRenameCheck?.checked ?? true;
   const pattern = renamePattern ? renamePattern.value : "";
+  const isVideoAv1On = enableVideoAv1Check?.checked ?? false;
+  const videoContainer = document.querySelector('input[name="videoContainer"]:checked')?.value || "mp4";
+  const videoBitrate = videoBitrateRange?.value || "3.0";
+  const videoAudio = videoPreserveAudioCheck?.checked ?? true;
   const fileSig = state.files.map(f => `${f.name}:${f.size}:${f.lastModified}`).join("|");
 
-  return `${isConvertOn}_${format}_${quality}_${isRenameOn}_${pattern}_${fileSig}`;
+  return `${isConvertOn}_${format}_${quality}_${isRenameOn}_${pattern}_${isVideoAv1On}_${videoContainer}_${videoBitrate}_${videoAudio}_${fileSig}`;
 }
 
 function isConversionCacheValid() {
@@ -2426,6 +2530,72 @@ async function convertImage(file, index = 0) {
   const isImageMime = file.type && file.type.startsWith("image/");
   const isImageExt = ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp", "jxl"].includes(fileExt);
   const isImage = isImageMime || isImageExt;
+  const isVideoExt = ["mp4", "webm", "mov", "m4v", "ogv"].includes(fileExt);
+  const isVideo = (file.type && file.type.startsWith("video/")) || isVideoExt;
+  const isVideoAv1On = isVideo && (enableVideoAv1Check?.checked ?? false);
+
+  if (isVideo && isVideoAv1On) {
+    const selectedContainer = document.querySelector('input[name="videoContainer"]:checked')?.value || "mp4";
+    const bitrateMbps = parseFloat(videoBitrateRange?.value || "3.0");
+    const preserveAudio = videoPreserveAudioCheck?.checked ?? true;
+    const outputName = createOutputName(file.name, null, index, selectedContainer);
+
+    if (state.results[index]) {
+      state.results[index].isEncodingVideo = true;
+      state.results[index].videoProgress = 0;
+      state.results[index].videoProgressMsg = "動画を初期化中...";
+      render();
+    }
+
+    try {
+      const encResult = await encodeVideoToAv1({
+        file,
+        bitrateMbps,
+        container: selectedContainer,
+        preserveAudio,
+        onProgress: ({ percent, message }) => {
+          if (state.results[index]) {
+            state.results[index].isEncodingVideo = true;
+            state.results[index].videoProgress = percent;
+            state.results[index].videoProgressMsg = message;
+            render();
+          }
+        }
+      });
+
+      const finalBlob = encResult.blob;
+      const finalUrl = URL.createObjectURL(finalBlob);
+
+      return {
+        id: crypto.randomUUID(),
+        name: outputName,
+        relativePath: file.relativePath || file.name,
+        url: finalUrl,
+        previewUrl: finalUrl,
+        blob: finalBlob,
+        size: finalBlob.size,
+        originalSize: file.size,
+        isNonImage: false,
+        isVideoConverted: true,
+      };
+    } catch (err) {
+      console.error("Video AV1 encoding error, fallback to original:", err);
+      alert(`動画のAV1エンコードに失敗したため、元の動画を出力します: ${err.message}`);
+      const url = URL.createObjectURL(file);
+      const outputName = createOutputName(file.name, null, index);
+      return {
+        id: crypto.randomUUID(),
+        name: outputName,
+        relativePath: file.relativePath || file.name,
+        url,
+        previewUrl: url,
+        blob: file,
+        size: file.size,
+        originalSize: file.size,
+        isNonImage: true,
+      };
+    }
+  }
 
   const isConvertOn = enableConvertCheck?.checked ?? true;
 
@@ -2437,7 +2607,7 @@ async function convertImage(file, index = 0) {
       name: outputName,
       relativePath: file.relativePath || file.name,
       url,
-      previewUrl: isImage ? url : "",
+      previewUrl: isImage ? url : (isVideo ? url : ""),
       blob: file,
       size: file.size,
       originalSize: file.size,
@@ -3313,7 +3483,7 @@ function generateRandomString(length) {
   return result;
 }
 
-function createOutputName(originalName, mimeType, index = 0) {
+function createOutputName(originalName, mimeType, index = 0, overrideExt = null) {
   const dotIndex = originalName.lastIndexOf(".");
   const baseName = dotIndex > 0 ? originalName.slice(0, dotIndex) : originalName;
   const originalExt = dotIndex > 0 ? originalName.slice(dotIndex + 1) : "";
@@ -3344,10 +3514,12 @@ function createOutputName(originalName, mimeType, index = 0) {
     safeBase = safeBase.replace(/[\\/:*?"<>|]/g, "-");
   }
 
-  const isImageMime = mimeType && (mimeType in extensions);
-  const ext = (isConvertOn && isImageMime)
-    ? extensions[mimeType]
-    : (originalExt || "bin");
+  let ext = originalExt || "bin";
+  if (overrideExt) {
+    ext = overrideExt.replace(/^\./, "");
+  } else if (isConvertOn && mimeType && (mimeType in extensions)) {
+    ext = extensions[mimeType];
+  }
 
   return `${safeBase}.${ext}`;
 }
@@ -3653,6 +3825,56 @@ if (closePinDisplayModalButton) {
     if (pinDisplayModal) pinDisplayModal.style.display = "none";
   });
 }
+
+// 🎥 動画 AV1 エンコード イベントリスナー
+enableVideoAv1Check?.addEventListener("change", () => {
+  if (videoSettingsArea) {
+    videoSettingsArea.style.display = enableVideoAv1Check.checked ? "block" : "none";
+  }
+  updateVideoEstSize();
+  invalidateConversionCache();
+  updateRenamePreview();
+  render();
+});
+
+videoBitrateRange?.addEventListener("input", () => {
+  const val = parseFloat(videoBitrateRange.value);
+  if (videoBitrateOutput) {
+    videoBitrateOutput.textContent = `${val.toFixed(1)} Mbps`;
+  }
+  videoPresetBtns.forEach(btn => {
+    const btnBitrate = parseFloat(btn.dataset.bitrate);
+    const isActive = Math.abs(btnBitrate - val) < 0.1;
+    btn.style.borderColor = isActive ? "#38bdf8" : "";
+    btn.style.color = isActive ? "#38bdf8" : "";
+  });
+  updateVideoEstSize();
+  invalidateConversionCache();
+});
+
+videoPresetBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (videoBitrateRange) {
+      videoBitrateRange.value = btn.dataset.bitrate;
+      videoBitrateRange.dispatchEvent(new Event("input"));
+    }
+  });
+});
+
+document.querySelectorAll('input[name="videoContainer"]').forEach(radio => {
+  radio.addEventListener("change", () => {
+    invalidateConversionCache();
+    updateRenamePreview();
+  });
+});
+
+videoPreserveAudioCheck?.addEventListener("change", () => {
+  updateVideoEstSize();
+  invalidateConversionCache();
+});
+
+// AV1 ハードウェアエンコーダ対応検知と初期化
+initAv1VideoSupport();
 
 render();
 
