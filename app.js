@@ -971,8 +971,8 @@ function renderCfDomainSelect() {
     localStorage.setItem("cfDomainList", JSON.stringify(domainList));
   }
 
-  cfDomainSelect.innerHTML = `<option value="">(標準) Worker URL をそのまま使用</option>` +
-    domainList.map(d => `<option value="${escapeHtml(d)}"${d === currentDomain ? " selected" : ""}>${escapeHtml(d)}</option>`).join("");
+  cfDomainSelect.innerHTML = `<option value="" style="background-color: #1a1c23; color: #f8fafc;">☁️ (標準) Worker URL をそのまま使用</option>` +
+    domainList.map(d => `<option value="${escapeHtml(d)}" style="background-color: #1a1c23; color: #f8fafc;"${d === currentDomain ? " selected" : ""}>🌐 ${escapeHtml(d)}</option>`).join("");
 
   if (cfDomainDeleteBtn) {
     cfDomainDeleteBtn.disabled = !currentDomain;
