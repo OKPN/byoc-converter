@@ -1204,15 +1204,6 @@ function renderCfDomainSelect() {
     domainList = [];
   }
 
-  // 過去の固定プリセット (content-relay.pages.dev) が残っていれば除外クリーンアップ
-  if (domainList.includes("https://content-relay.pages.dev")) {
-    domainList = domainList.filter(d => d !== "https://content-relay.pages.dev");
-    localStorage.setItem("cfDomainList", JSON.stringify(domainList));
-    if (localStorage.getItem("cfDirectDomain") === "https://content-relay.pages.dev") {
-      localStorage.removeItem("cfDirectDomain");
-    }
-  }
-
   const currentDomain = (localStorage.getItem("cfDirectDomain") || "").trim().replace(/\/$/, "");
 
   // 既存の保存値があればリストにも保持
