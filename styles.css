@@ -1061,25 +1061,28 @@ input[type="range"] {
     justify-content: space-between;
   }
 
-  /* R2ストレージパネルのヘッダーのスマホ縦書き・崩れ対策 */
+  /* R2/KVストレージパネルのヘッダーのスマホ縦書き・崩れ対策 */
   .r2-files-panel .panel-heading {
     flex-wrap: wrap;
     gap: 12px;
+    align-items: center;
   }
 
   .r2-files-panel .panel-heading h2 {
     order: 1;
-    white-space: nowrap;
+    margin: 0;
+    font-size: 15px;
   }
 
-  .r2-files-panel #reloadR2FilesButton {
+  .r2-files-panel .r2-heading-actions {
     order: 2;
+    margin-left: auto !important;
   }
 
   .r2-files-panel .storage-usage {
     order: 3;
     width: 100%;
-    margin-right: 0;
+    margin: 4px 0 0 0 !important;
     align-items: flex-start;
   }
 
