@@ -2,8 +2,9 @@
 
 A privacy-first, browser-local image optimization, Exif stripping, and format conversion studio with an optional self-hosted Cloudflare Workers/KV temporary cloud sharing integration.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-orange?style=for-the-badge&logo=github)](https://okpn.github.io/byoc-converter/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Cloudflare%20Pages-orange?style=for-the-badge&logo=cloudflare)](https://byoc-converter.pages.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Zero-Dollar CDN Guide](https://img.shields.io/badge/Guide-Free%20R2%20CDN-brightgreen?style=for-the-badge)](docs/FREE_R2_PAGES_CDN_GUIDE.md)
 
 ---
 
@@ -28,11 +29,20 @@ While BYOC Converter is primarily a local image optimization tool, it includes a
 
 ---
 
+## 🚀 Free R2 Media CDN (No Custom Domain Required)
+
+Want to serve images/videos with direct links without paying for a custom domain?  
+Check out our step-by-step recipe on setting up a 100% free Cloudflare Pages edge proxy:
+
+👉 **[📖 Zero-Dollar R2 Image CDN via Cloudflare Pages Guide](docs/FREE_R2_PAGES_CDN_GUIDE.md)**
+
+---
+
 ## 🚀 Quick Start
 
 No installation required! Access the web application directly in any modern browser:
 
-👉 **[https://okpn.github.io/byoc-converter/](https://okpn.github.io/byoc-converter/)**
+👉 **[https://byoc-converter.pages.dev](https://byoc-converter.pages.dev)**
 
 ### Local Development
 
